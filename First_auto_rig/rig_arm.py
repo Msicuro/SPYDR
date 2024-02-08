@@ -8,7 +8,7 @@ reload(utils)
 #This is also known as Attributes of a Class
 class_name = 'Rig_Arm'
 #layout_file = arm.json
-num_joints = 4
+num_joints = 3
 
 
 class Rig_Arm:
@@ -99,9 +99,12 @@ class Rig_Arm:
 		#Orient constrain IK wrist joint to IK control
 		cmds.orientConstraint(self.rig_info['ik_controls'][1], self.rig_info['ik_joints'][2], mo = True)
 
-		#Make control arm settings to handled IK/FK switching
+		#Make control arm settings to handle IK/FK switching
 		self.rig_info['set_control'] = utils.createControl([[self.rig_info['positions'][2], 'control_settings']])[0]
-		cmds.addAttr(self.rig_info['set_control'][1], longName = 'IK_FK', attributeType = 'enum', enumName = 'fk:ik', keyable = True)
+		cmds.addAttr(self.rig_info['set_control'][1], longName = 'IK_FK', attributeType = 'double', keyable = True,
+					 															min = 0,
+					 															max = 1,
+					 															defaultValue = 0)
 
 
 		#################

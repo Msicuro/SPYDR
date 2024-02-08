@@ -1,7 +1,7 @@
 {"fk_controls": ["s_ctrl_fk_shoulder", "s_ctrl_fk_elbow", "s_ctrl_fk_wrist"], 
-"bind_joints": ["s_bind_shoulder_joint", "s_bind_elbow_joint", "s_bind_wrist_joint", "s_bind_wristEnd_joint"], 
+"bind_joints": ["s_bind_shoulder_joint", "s_bind_elbow_joint", "s_bind_wrist_joint"],
 "ik_controls": ["s_ctrl_ik_wrist", "s_ikhandle_arm", "s_elbow_pole_vector"], 
-"fk_joints": ["s_fk_shoulder_joint", "s_fk_elbow_joint", "s_fk_wrist_joint", "s_fk_wristEnd_joint"], 
-"ik_joints": ["s_ik_shoulder_joint", "s_ik_elbow_joint", "s_ik_wrist_joint", "s_ik_wristEnd_joint"], 
-"positions": [[-7.253066, 0, 0.590704], [-1.365397, 0, -0.939316], [4.193028, 0, 0.861846], [5.316333, 0, 1.617172]], 
-"rig_joints": ["s_rig_shoulder_joint", "s_rig_elbow_joint", "s_rig_wrist_joint", "s_rig_wristEnd_joint"]}
+"fk_joints": ["s_fk_shoulder_joint", "s_fk_elbow_joint", "s_fk_wrist_joint"],
+"ik_joints": ["s_ik_shoulder_joint", "s_ik_elbow_joint", "s_ik_wrist_joint"],
+"positions": [[-7.253066, 0, 0.590704], [-1.365397, 0, -0.939316], [4.193028, 0, 0.861846]],
+"rig_joints": ["s_rig_shoulder_joint", "s_rig_elbow_joint", "s_rig_wrist_joint"]}

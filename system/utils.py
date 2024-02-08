@@ -59,7 +59,7 @@ def calculatePoleVectorPosition(joints):
 	startEndN = startEnd.normal()
 	projV = startEndN * proj
 	arrowV = startMid - projV
-	arrowV *= 0.5
+	arrowV *= 5
 	finalV = arrowV + midVector
 	return([finalV.x, finalV.y, finalV.z])
 
