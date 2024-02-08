@@ -117,6 +117,7 @@ class Rig_Arm:
 		cmds.select(cl=True)
 
 		#Parent FK controls
+		# TODO: Fix parent order
 		cmds.parent(self.rig_info['fk_controls'][0][0],self.rig_info['fk_controls'][1][1][0])
 		cmds.parent(self.rig_info['fk_controls'][1][0],self.rig_info['fk_controls'][2][1][0])
 
@@ -124,11 +125,16 @@ class Rig_Arm:
 
 
 
-		'''Connect IK and FK to rig joints'''
-		#parent Constrain fk->ik->rig
-		#cmds.parentConstraint('fk_shoulder_joint', 'ik_shoulder_joint', 'rig_shoulder_joint', maintainOffset=True, weight=1)
-		#To switch between FK and IK, change values of the two attributes (FK shoulder joint and IK shoulder joint)
-		# and set one or the other to zero	
+		# Connect IK and FK to rig joints
+		for i, jnt in enumerate(self.rig_info['ik_joints']):
+			cmds.parentConstraint(jnt, self.rig_info['fk_joints'][i], self.rig_info["rig_joints"][i],
+								  													maintainOffset = 1,
+								  													weight = 1)
+
+		# for i, jnt in enumerate(self.rig_info["ik_joints"]):
+		# 	utils.connectThroughBlendColors(jnt, self.rig_info['fk_joints'][i], self.rig_info["rig_joints"][i],
+		# 									self.instance,
+		# 									cmds.getAttr("{}.IK_FK".format(self.rig_info["set_control"][1][0])))
 
 	
 
