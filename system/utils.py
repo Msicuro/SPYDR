@@ -94,3 +94,35 @@ def connectThroughBlendColors(parentsA, parentsB, children, instance, switchattr
 	return(constraints)
 
 
+def connectBlendColors(blend_attr, direct_conn_attrs, blend_conn_attrs, instance):
+	'''
+	Connects a blender attribute to two additional attributes using a blendColors node, intended for IK/FK switching
+	Args:
+		blend_attr: The attribute that will connect to the blendColors Blender attribute
+		direct_conn_attrs: A list of attributes that the blend_attr will directly connect to
+		blend_conn_attrs: A list of attributes that the outputR attribute of the blendColors will directly connect to
+		instance: The instance the attribute is part of, typically left or right
+
+	Returns:
+		bcNode: The blendColors node
+	'''
+	# Create blend colors node
+	bcNode = cmds.shadingNode("blendColors", asUtility = True, name = "{}_{}_blendColors".format(instance, blend_attr))
+
+	# Set Color 1R, 1G & 1B to 0 and Color 2R, 2G, & 2B to 1
+	for i in ["R", "G", "B"]:
+		cmds.setAttr("{}.color1{}".format(bcNode, i), 0)
+		cmds.setAttr("{}.color2{}".format(bcNode, i), 1)
+
+	# Connect the blend attribute to the Blender attribute
+	cmds.connectAttr("{}".format(blend_attr), "{}.blender".format(bcNode))
+
+	# Connect the switch attribute to the direct connection attributes
+	for i in direct_conn_attrs:
+		cmds.connectAttr("{}".format(blend_attr), "{}".format(i))
+
+	# Connect the output R attribute from the blend colors node to the blend connection attributes
+	for i in blend_conn_attrs:
+		cmds.connectAttr("{}.outputR".format(bcNode), "{}".format(i))
+
+	return bcNode
