@@ -112,17 +112,14 @@ class Rig_Arm:
 		#################
 
 		#Create FK controls
-		self.rig_info['fk_controls'] = utils.createControl([[self.rig_info['positions'][0],self.module_info['fk_controls'][0].replace('s_',self.instance)],
-		[self.rig_info['positions'][1],self.module_info['fk_controls'][1].replace('s_',self.instance)], [self.rig_info['positions'][2],self.module_info['fk_controls'][2].replace('s_',self.instance)]])
+		self.rig_info['fk_controls'] = utils.createControl([[self.rig_info['positions'][0], self.module_info['fk_controls'][0].replace('s_',self.instance)],
+															[self.rig_info['positions'][1], self.module_info['fk_controls'][1].replace('s_',self.instance)],
+															[self.rig_info['positions'][2], self.module_info['fk_controls'][2].replace('s_',self.instance)]])
 		cmds.select(cl=True)
 
 		#Parent FK controls
-		# TODO: Fix parent order
-		cmds.parent(self.rig_info['fk_controls'][0][0],self.rig_info['fk_controls'][1][1][0])
-		cmds.parent(self.rig_info['fk_controls'][1][0],self.rig_info['fk_controls'][2][1][0])
-
-
-
+		cmds.parent(self.rig_info['fk_controls'][1][0],self.rig_info['fk_controls'][0][1][0])
+		cmds.parent(self.rig_info['fk_controls'][2][0],self.rig_info['fk_controls'][1][1][0])
 
 
 		# Connect IK and FK to rig joints
