@@ -98,10 +98,10 @@ def connectBlendColors(blend_attr, direct_conn_attrs, blend_conn_attrs, instance
 	'''
 	Connects a blender attribute to two additional attributes using a blendColors node, intended for IK/FK switching
 	Args:
-		blend_attr: The attribute that will connect to the blendColors Blender attribute
-		direct_conn_attrs: A list of attributes that the blend_attr will directly connect to
-		blend_conn_attrs: A list of attributes that the outputR attribute of the blendColors will directly connect to
-		instance: The instance the attribute is part of, typically left or right
+		blend_attr(Attr): The attribute that will connect to the blendColors Blender attribute
+		direct_conn_attrs(List:Attrs): A list of attributes that the blend_attr will directly connect to
+		blend_conn_attrs(List:Attrs): A list of attributes that the outputR attribute of the blendColors will directly connect to
+		instance(String): The instance the attribute is part of, typically left or right
 
 	Returns:
 		bcNode: The blendColors node
@@ -114,10 +114,10 @@ def connectBlendColors(blend_attr, direct_conn_attrs, blend_conn_attrs, instance
 		cmds.setAttr("{}.color1{}".format(bcNode, i), 0)
 		cmds.setAttr("{}.color2{}".format(bcNode, i), 1)
 
-	# Connect the blend attribute to the Blender attribute
+	# Connect the blending attribute to the Blender attribute on the BC node
 	cmds.connectAttr("{}".format(blend_attr), "{}.blender".format(bcNode))
 
-	# Connect the switch attribute to the direct connection attributes
+	# Connect the blending attribute to the direct connection attributes
 	for i in direct_conn_attrs:
 		cmds.connectAttr("{}".format(blend_attr), "{}".format(i))
 
@@ -126,3 +126,50 @@ def connectBlendColors(blend_attr, direct_conn_attrs, blend_conn_attrs, instance
 		cmds.connectAttr("{}.outputR".format(bcNode), "{}".format(i))
 
 	return bcNode
+
+
+def text_to_hex(txt = ''):
+	'''
+	Converts unicode string to Hex encoding so the Maya type node can use it
+	Args:
+		txt(String): The text to encode
+
+	Returns:
+		A list of encoded characters
+	'''
+	out = []
+	for c in txt:
+		hx = c.encode('hex')
+		out.append(hx)
+	return ' '.join(out)
+
+def make_curve_text(txt):
+	'''
+	Create curve text from Polygon TypeMesh for controls
+	Args:
+		txt(String): The text that will be turned into control curves
+
+	Returns:
+		TxtObjects(Mesh): The TypeMesh created from the text
+	'''
+	# A list to store all the newly created Geo.
+	TxtObjects = []
+
+	# Converting our text to Hex code so the Maya type node will read it.
+	hx = text_to_hex(txt)
+
+	# Creating the Polygon Type
+	cmds.CreatePolygonType()
+	# Getting the node name from selection because the CreatePolygonType() command doesn't actually return the node name.
+	NewTextObj = cmds.ls(sl=True)[0]
+	# Listing connections on the New Text object node to find the type node.
+	TypeNode = cmds.listConnections(NewTextObj + ".message")
+
+	# If we find it, Set attributes on it.
+	if TypeNode:
+		# Place any other preset settings in here.
+		cmds.setAttr(TypeNode[0]+".textInput", hx, type="string")
+	# Adding the New text object to the TxtObjects List
+	TxtObjects.append(NewTextObj)
+
+	return TxtObjects
