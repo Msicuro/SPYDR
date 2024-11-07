@@ -1,6 +1,7 @@
 import pymel.core as pm
 
 rig_chains = ["_BLEND", "_FK", "_IK"]
+type = ["_JNT", "_CTRL", "_GRP"]
 spine_chain = pm.selected()
 
 
@@ -132,6 +133,47 @@ def scale_ribbon_squash_and_stretch(curve, joints):
         curve_sqrt_invert.outputX >> i.scaleZ
 
 
+def create_fk_rig(base_joint):
+    # Create FK chain
+    fk_chain = list_joint_chain(pm.duplicate(base_joint[0])[0])
+    print(fk_chain)
+
+    # Rename the FK chain
+    for i in fk_chain:
+        if "_JNT" in i.name():
+            i.rename(split_name(i, "_JNT", rig_chains[1]))
+        else:
+            i.rename("{}{}{}".format(i, rig_chains[1], type[0]))
+
+    # Create controls for the FK chain and parent their zero transforms to each other
+    fk_grps = []
+    for i in fk_chain:
+        new_trans = i.getTranslation(space="world")
+        new_rot = i.getRotation(space="world")
+
+        circ = pm.circle(name="{}".format(i.name().replace("_JNT", type[1])))
+        circ[1].normalY.set(90)
+        circ[1].radius.set(10)
+
+        circ[0].setTranslation(new_trans, space="world")
+        circ[0].setRotation(new_rot, space="world")
+        # Create zero groups
+        grp = pm.group(empty=True, name="{}{}".format(circ[0].name(), "_ZERO_GRP"))
+        grp.setTranslation(new_trans, space="world")
+        grp.setRotation(new_rot, space="world")
+        fk_grps.append(grp)
+        pm.parent(circ[0], grp)
+
+        # Create the control hierarchy
+        for i in range(len(fk_grps) - 1):
+            pm.parent(fk_grps[i + 1], fk_grps[i].getChildren())
+
+        # Constrain the FK chain to the controls
+        for i, e in enumerate(fk_grps):
+            pm.parentConstraint(e.getChildren(), fk_chain[i])
+
+    return fk_grps, fk_chain
+
 def fk_ik_hinge(joint_chain):
     '''
 
@@ -143,19 +185,8 @@ def fk_ik_hinge(joint_chain):
     '''
 
     # Create FK chain
-    fk_chain = list_joint_chain(pm.duplicate(joint_chain[0])[0])
-    # if "_JNT" in fk_chain[0].name():
-    #     for i in fk_chain:
-    #         i.rename(split_name(i, "_JNT", rig_chains[1]))
-    # else:
-    #     for i in fk_chain:
-    #         i.rename("{}_FK".format(i))
+    fk_grps, fk_chain = create_fk_rig(joint_chain)
 
-    for i in fk_chain:
-        if "_JNT" in i.name():
-            i.rename(split_name(i, "_JNT", rig_chains[1]))
-        else:
-            i.rename("{}{}".format(i, rig_chains[1]))
 
     # Create IK chain
     ik_chain = list_joint_chain(pm.duplicate(joint_chain[0])[0])
@@ -175,32 +206,7 @@ def fk_ik_hinge(joint_chain):
         else:
             i.rename("{}{}".format(i, rig_chains[0]))
 
-    # Create controls for the FK chain and parent their zero transforms to each other
-    fk_grps = []
 
-    for i in fk_chain:
-        new_trans = i.getTranslation(space="world")
-        new_rot = i.getRotation(space="world")
-
-        circ = pm.circle(name="{}".format(i.name().replace("_JNT", "_CTRL")))
-        circ[1].normalY.set(90)
-        circ[1].radius.set(10)
-
-        circ[0].setTranslation(new_trans, space="world")
-        circ[0].setRotation(new_rot, space="world")
-        #TODO Create zero group
-        grp = pm.group(empty=True, name = "{}{}".format(circ[0].name(), "ZERO_GRP"))
-        grp.setTranslation(new_trans, space="world")
-        grp.setRotation(new_rot, space="world")
-        fk_grps.append(grp)
-        pm.parent(circ[0], grp)
-
-    for i in range(len(fk_grps)-1):
-        pm.parent(fk_grps[i+1], fk_grps[i].getChildren())
-
-    # Attach controls to the FK chain
-    for i, e in enumerate(fk_grps):
-        pm.parentConstraint(e.getChildren(), fk_chain[i])
 
 
 
