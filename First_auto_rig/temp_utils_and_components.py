@@ -134,6 +134,14 @@ def scale_ribbon_squash_and_stretch(curve, joints):
 
 
 def create_fk_rig(base_joint):
+    '''
+
+    Args:
+        base_joint:
+
+    Returns:
+
+    '''
     # Create FK chain
     fk_chain = list_joint_chain(pm.duplicate(base_joint[0], renameChildren=True)[0])
     print(fk_chain)
@@ -173,6 +181,37 @@ def create_fk_rig(base_joint):
             pm.parentConstraint(e.getChildren(), fk_chain[i])
 
     return fk_grps, fk_chain
+
+# TODO: Create IK function
+def create_ik_rig(base_joint):
+    # Create IK chain
+    ik_chain = list_joint_chain(pm.duplicate(base_joint[0], renameChildren=True)[0])
+
+    # Rename the IK chain
+    for i in ik_chain:
+        if "_JNT" in i.name():
+            i.rename(split_name(i, "_JNT", rig_chains[2]))
+        else:
+            i.rename("{}{}{}".format(i, rig_chains[2], type[0]))
+
+    # Create IK contrl and parent it to the zero transform
+
+    new_trans = ik_chain[-1].getTranslation(space="world")
+    new_rot = ik_chain[-1].getRotation(space="world")
+
+    # TODO: There's a chance this might return a list
+    ik_ctrl = pm.curve(d=1, p=[(0.5, 0.5, 0.5), (0.5, -0.5, 0.5), (-0.5, -0.5, 0.5), (-0.5, 0.5, 0.5), (0.5, 0.5, 0.5), (0.5, 0.5, -0.5), (0.5, -0.5, -0.5), (0.5, -0.5, 0.5), (-0.5, -0.5, 0.5), (-0.5, -0.5, -0.5), (0.5, -0.5, -0.5), (0.5, 0.5, -0.5), (-0.5, 0.5, -0.5), (-0.5, -0.5, -0.5), (-0.5, 0.5, -0.5), (-0.5, 0.5, 0.5)], k=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+
+    ik_ctrl.setTranslation(new_trans, space="world")
+    ik_ctrl.setRotation(new_rot, space="world")
+    # Create zero group
+    ik_grp = pm.group(empty=True, name="{}{}".format(ik_ctrl.name(), "_ZERO_GRP"))
+    ik_grp.setTranslation(new_trans, space="world")
+    ik_grp.setRotation(new_rot, space="world")
+    pm.parent(ik_ctrl, ik_grp)
+
+    # TODO: Add ik handle
+    # TODO: Add pole vector
 
 def fk_ik_hinge(joint_chain):
     '''
