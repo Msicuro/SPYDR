@@ -135,7 +135,7 @@ def scale_ribbon_squash_and_stretch(curve, joints):
 
 def create_fk_rig(base_joint):
     # Create FK chain
-    fk_chain = list_joint_chain(pm.duplicate(base_joint[0])[0])
+    fk_chain = list_joint_chain(pm.duplicate(base_joint[0], renameChildren=True)[0])
     print(fk_chain)
 
     # Rename the FK chain
