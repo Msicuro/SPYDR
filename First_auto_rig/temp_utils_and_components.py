@@ -1,4 +1,5 @@
 import pymel.core as pm
+import system.utils as sys_utils
 
 rig_chains = ["_BLEND", "_FK", "_IK"]
 type = ["_JNT", "_CTRL", "_GRP"]
@@ -182,7 +183,6 @@ def create_fk_rig(base_joint):
 
     return fk_grps, fk_chain
 
-# TODO: Create IK function
 def create_ik_rig(base_joint):
     # Create IK chain
     ik_chain = list_joint_chain(pm.duplicate(base_joint[0], renameChildren=True)[0])
@@ -194,7 +194,7 @@ def create_ik_rig(base_joint):
         else:
             i.rename("{}{}{}".format(i, rig_chains[2], type[0]))
 
-    # Create IK contrl and parent it to the zero transform
+    # Create IK control and parent it to the zero transform
 
     new_trans = ik_chain[-1].getTranslation(space="world")
     new_rot = ik_chain[-1].getRotation(space="world")
@@ -210,8 +210,39 @@ def create_ik_rig(base_joint):
     ik_grp.setRotation(new_rot, space="world")
     pm.parent(ik_ctrl, ik_grp)
 
-    # TODO: Add ik handle
-    # TODO: Add pole vector
+    ik_handle = pm.ikHandle(sj=ik_chain[0], ee=ik_chain[-1], sol='ikRPsolver', p=2, w=1)
+    # Create pole vector
+    pv_ctrl = pm.curve(d=1, p=[(0, 3.21, 0), (0, 2.96, 1.23), (0, 2.27, 2.27), (0, 1.23, 2.96), (0, 0, 3.21),
+                               (0, -1.23, 2.96), (0, -2.27, 2.27), (0, -2.97, 1.23), (0, -3.21, 0), (0, -2.96, -1.23),
+                               (0, -2.27, -2.27), (0, -1.23, -2.96), (0, 0, -3.21), (0, 1.23, -2.96), (0, 2.27, -2.27),
+                               (0, 2.96, -1.23), (0, 3.21, 0), (-0.87, 2.96, 0.97), (-1.60, 2.27, 1.60),
+                               (-2.09, 1.23, 2.09), (-2.27, 0, 2.27), (-2.09, -1.23, 2.09), (-1.60, -2.27, 1.60),
+                               (-0.87, -2.96, 0.87), (0, -3.21, 0), (0.87, -2.97, -0.87), (1.60, -2.27, -1.60),
+                               (2.09, -1.23, -2.09), (2.27, 0, -2.27), (2.09, 1.23, -2.09), (1.60, 2.27, -1.60),
+                               (0.87, 2.86, -0.87), (0, 3.21, 0), (-1.23, 2.97, 0), (-2.27, 2.27, 0), (-2.97, 1.23, 0),
+                               (-3.21, 0, 0), (-2.97, -1.23, 0), (-2.27, -2.27, 0), (-1.23, -2.96, 0), (0, -3.21, 0),
+                               (1.23, -2.97, 0), (2.27, -2.27, 0), (2.97, -1.23, 0), (3.21, 0, 0), (2.97, 1.23, 0),
+                               (2.27, 2.27, 0), (1.23, 29.7, 0), (0, 3.21, 0), (-0.87, 2.97, -0.87),
+                               (-1.60, 2.27, -1.60), (-2.09, 1.23, -2.09), (-2.27, 0, -2.27), (-2.09, -1.23, -2.09),
+                               (-1.60, -2.27, -1.60), (-0.87, -2.96, -0.87), (0, -3.21, 0), (0.87, -2.97, 0.87),
+                               (1.60, -2.27, 1.60), (2.09, -1.23, 2.09), (2.27, 0, 2.27), (2.09, 1.23, 2.09),
+                               (1.60, 2.27, 1.60), (0.87, 2.97, 0.87), (0, 3.21, 0), (1.23, 2.97, 0), (2.27, 2.27, 0),
+                               (2.97, 1.23, 0), (3.21, 0, 0), (2.27, 0, 2.27), (0, 0, 3.21), (-2.27, 0, 2.27),
+                               (-3.21, 0, 0), (-2.27, 0, -2.27), (0, 0, -3.21), (2.27, 0, -2.27), (3.21, 0, 0),
+                               (2.27, 0, 2.27), (0, 0, 3.21)], name=ik_ctrl.name().replace("_CTRL", "PV"))
+    # Create zero group
+    pv_grp = pm.group(empty=True, name="{}{}".format(pv_ctrl.name(), "_ZERO_GRP"))
+    pm.parent(ik_ctrl, ik_grp)
+    # Move the pole vector
+    # TODO: Replace calculate pole vector function with pymel version
+    pv_position = sys_utils.calculatePoleVectorPosition(ik_chain)
+    pv_grp.setTranslation(pv_position, space="world")
+
+    pm.poleVectorConstraint(pv_ctrl, ik_handle)
+    pm.orientConstraint(ik_ctrl, ik_chain[-1])
+
+
+
 
 def fk_ik_hinge(joint_chain):
     '''
