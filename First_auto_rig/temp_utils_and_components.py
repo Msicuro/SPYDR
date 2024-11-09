@@ -184,6 +184,14 @@ def create_fk_rig(base_joint):
     return fk_grps, fk_chain
 
 def create_ik_rig(base_joint):
+    # Save IK chain names
+    ik_chain_names = []
+    for i in list_joint_chain(base_joint[0]):
+        if "_JNT" in i.name():
+            ik_chain_names.append(split_name(i, "_JNT", rig_chains[2]))
+        else:
+            i.rename("{}{}{}".format(i, rig_chains[2], type[0]))
+
     # Create IK chain
     ik_chain = list_joint_chain(pm.duplicate(base_joint[0], renameChildren=True)[0])
 
@@ -200,7 +208,12 @@ def create_ik_rig(base_joint):
     new_rot = ik_chain[-1].getRotation(space="world")
 
     # TODO: There's a chance this might return a list
-    ik_ctrl = pm.curve(d=1, p=[(0.5, 0.5, 0.5), (0.5, -0.5, 0.5), (-0.5, -0.5, 0.5), (-0.5, 0.5, 0.5), (0.5, 0.5, 0.5), (0.5, 0.5, -0.5), (0.5, -0.5, -0.5), (0.5, -0.5, 0.5), (-0.5, -0.5, 0.5), (-0.5, -0.5, -0.5), (0.5, -0.5, -0.5), (0.5, 0.5, -0.5), (-0.5, 0.5, -0.5), (-0.5, -0.5, -0.5), (-0.5, 0.5, -0.5), (-0.5, 0.5, 0.5)], k=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    ik_ctrl = pm.curve(d=1, p=[(0.5, 0.5, 0.5), (0.5, -0.5, 0.5), (-0.5, -0.5, 0.5), (-0.5, 0.5, 0.5), (0.5, 0.5, 0.5),
+                               (0.5, 0.5, -0.5), (0.5, -0.5, -0.5), (0.5, -0.5, 0.5), (-0.5, -0.5, 0.5),
+                               (-0.5, -0.5, -0.5), (0.5, -0.5, -0.5), (0.5, 0.5, -0.5), (-0.5, 0.5, -0.5),
+                               (-0.5, -0.5, -0.5), (-0.5, 0.5, -0.5), (-0.5, 0.5, 0.5)],
+                       k=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    ik_ctrl.rename(ik_chain[-1].name().replace("_JNT", type[1]))
 
     ik_ctrl.setTranslation(new_trans, space="world")
     ik_ctrl.setRotation(new_rot, space="world")
@@ -210,7 +223,7 @@ def create_ik_rig(base_joint):
     ik_grp.setRotation(new_rot, space="world")
     pm.parent(ik_ctrl, ik_grp)
 
-    ik_handle = pm.ikHandle(sj=ik_chain[0], ee=ik_chain[-1], sol='ikRPsolver', p=2, w=1)
+    ik_handle = pm.ikHandle(sj=ik_chain[0], ee=ik_chain[-1], sol='ikRPsolver', p=2, w=1)[0]
     # Create pole vector
     pv_ctrl = pm.curve(d=1, p=[(0, 3.21, 0), (0, 2.96, 1.23), (0, 2.27, 2.27), (0, 1.23, 2.96), (0, 0, 3.21),
                                (0, -1.23, 2.96), (0, -2.27, 2.27), (0, -2.97, 1.23), (0, -3.21, 0), (0, -2.96, -1.23),
@@ -229,13 +242,13 @@ def create_ik_rig(base_joint):
                                (1.60, 2.27, 1.60), (0.87, 2.97, 0.87), (0, 3.21, 0), (1.23, 2.97, 0), (2.27, 2.27, 0),
                                (2.97, 1.23, 0), (3.21, 0, 0), (2.27, 0, 2.27), (0, 0, 3.21), (-2.27, 0, 2.27),
                                (-3.21, 0, 0), (-2.27, 0, -2.27), (0, 0, -3.21), (2.27, 0, -2.27), (3.21, 0, 0),
-                               (2.27, 0, 2.27), (0, 0, 3.21)], name=ik_ctrl.name().replace("_CTRL", "PV"))
+                               (2.27, 0, 2.27), (0, 0, 3.21)], name=ik_ctrl.name().replace("_CTRL", "_PV"))
     # Create zero group
     pv_grp = pm.group(empty=True, name="{}{}".format(pv_ctrl.name(), "_ZERO_GRP"))
-    pm.parent(ik_ctrl, ik_grp)
+    pm.parent(pv_ctrl, pv_grp)
     # Move the pole vector
     # TODO: Replace calculate pole vector function with pymel version
-    pv_position = sys_utils.calculatePoleVectorPosition(ik_chain)
+    pv_position = calculatePoleVectorPosition(ik_chain)
     pv_grp.setTranslation(pv_position, space="world")
 
     pm.poleVectorConstraint(pv_ctrl, ik_handle)
@@ -277,7 +290,26 @@ def fk_ik_hinge(joint_chain):
             i.rename("{}{}".format(i, rig_chains[0]))
 
 
+def calculatePoleVectorPosition(joints):
 
+    if isinstance(joints, list) and len(joints) == 3:
+        startVector = joints[0].getTranslation(space="world")
+        midVector = joints[1].getTranslation(space="world")
+        endVector = joints[2].getTranslation(space="world")
+
+        startEnd = endVector - startVector
+        startMid = midVector - startVector
+        dotP = startMid.dot(startEnd)
+        proj = float(dotP) / float(startEnd.length())
+        startEndN = startEnd.normal()
+        projV = startEndN * proj
+        arrowV = startMid - projV
+        arrowV *= 5
+        finalV = arrowV + midVector
+    else:
+        raise RuntimeError("Please select three joints in a chain")
+
+    return (finalV)
 
 
 def create_attach_controls(objects, type):
