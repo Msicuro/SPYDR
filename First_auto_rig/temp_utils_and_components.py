@@ -297,13 +297,30 @@ def fk_ik_hinge(base_joint):
     for i, e in enumerate(blend_chain):
         e.rename(blend_chain_names[i])
 
+    blend_ctrl_points = [[1, 0, -1.0], [1, 0, 1], [0, 1.391788, 0], [1, 0, -1.0], [-1.0, 0, -1.0], [0, 1.391788, 0],
+                         [1, 0, 1], [-1.0, 0, 1], [0, 1.391788, 0], [-1.0, 0, -1.0], [-1.0, 0, 1]]
     # Create blend control
-    blend_ctrl = pm.curve(d=1, )
+    blend_ctrl = pm.curve(degree=1, point=blend_ctrl_points, name="{}{}{}".format(blend_chain[-1].name(),
+                                                                                  rig_chains[0], type[1]))
+
+    # Create zero group
+    blend_grp = pm.group(empty=True, name="{}{}".format(blend_ctrl.name(), "_ZERO_GRP"))
+    pm.parent(blend_ctrl, blend_grp)
+
+    # Move the blend control
+    new_trans = blend_chain[-1].getTranslation(space="world")
+    if new_trans[0] > 0:
+        new_trans[0] += 5
+    else:
+        new_trans[0] -= 5
+
+    blend_grp.setTranslation(new_trans, space="world")
+
     # Create FK chain
-    fk_grps, fk_chain = create_fk_rig(base_joint)
+    # fk_grps, fk_chain = create_fk_rig(base_joint)
 
     # Create IK chain
-    ik_chain, ik_ctrl = create_ik_rig(base_joint)
+    # ik_chain, ik_ctrl = create_ik_rig(base_joint)
 
 
 def calculatePoleVectorPosition(joints):
@@ -328,7 +345,24 @@ def calculatePoleVectorPosition(joints):
     return (finalV)
 
 
+def parse_curve_points(curve_string):
+    # Split each point in the string
+    p_split = curve_string.split("-p")
+    # Remove the knot values
+    p_split[-1] = p_split[-1].split("-k", 1)[0]
+    # Remove the empty space at the front
+    p_split.remove("")
+    # Split each point into lists
+    space_split = [i.split() for i in p_split]
 
+    for i, e in enumerate(space_split):
+        for each, point in enumerate(e):
+            if len(point) == 1:
+                space_split[i][each] = int(point)
+            else:
+                space_split[i][each] = float(point)
+
+    return space_split
 
 
 def create_attach_controls(objects, type):
