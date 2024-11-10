@@ -1,5 +1,4 @@
 import pymel.core as pm
-import system.utils as sys_utils
 
 rig_chains = ["_BLEND", "_FK", "_IK"]
 type = ["_JNT", "_CTRL", "_GRP"]
@@ -143,16 +142,20 @@ def create_fk_rig(base_joint):
     Returns:
 
     '''
+    # Save IK chain names
+    fk_chain_names = []
+    for i in list_joint_chain(base_joint[0]):
+        if "_JNT" in i.name():
+            fk_chain_names.append(split_name(i, "_JNT", rig_chains[1]))
+        else:
+            fk_chain_names.append("{}{}{}".format(i, rig_chains[1], type[0]))
+
     # Create FK chain
     fk_chain = list_joint_chain(pm.duplicate(base_joint[0], renameChildren=True)[0])
-    print(fk_chain)
 
     # Rename the FK chain
-    for i in fk_chain:
-        if "_JNT" in i.name():
-            i.rename(split_name(i, "_JNT", rig_chains[1]))
-        else:
-            i.rename("{}{}{}".format(i, rig_chains[1], type[0]))
+    for i, e in enumerate(fk_chain):
+        e.rename(fk_chain_names[i])
 
     # Create controls for the FK chain and parent their zero transforms to each other
     fk_grps = []
@@ -190,24 +193,19 @@ def create_ik_rig(base_joint):
         if "_JNT" in i.name():
             ik_chain_names.append(split_name(i, "_JNT", rig_chains[2]))
         else:
-            i.rename("{}{}{}".format(i, rig_chains[2], type[0]))
+            ik_chain_names.append("{}{}{}".format(i, rig_chains[2], type[0]))
 
     # Create IK chain
     ik_chain = list_joint_chain(pm.duplicate(base_joint[0], renameChildren=True)[0])
 
     # Rename the IK chain
-    for i in ik_chain:
-        if "_JNT" in i.name():
-            i.rename(split_name(i, "_JNT", rig_chains[2]))
-        else:
-            i.rename("{}{}{}".format(i, rig_chains[2], type[0]))
+    for i, e in enumerate(ik_chain):
+        e.rename(ik_chain_names[i])
 
     # Create IK control and parent it to the zero transform
-
     new_trans = ik_chain[-1].getTranslation(space="world")
     new_rot = ik_chain[-1].getRotation(space="world")
 
-    # TODO: There's a chance this might return a list
     ik_ctrl = pm.curve(d=1, p=[(0.5, 0.5, 0.5), (0.5, -0.5, 0.5), (-0.5, -0.5, 0.5), (-0.5, 0.5, 0.5), (0.5, 0.5, 0.5),
                                (0.5, 0.5, -0.5), (0.5, -0.5, -0.5), (0.5, -0.5, 0.5), (-0.5, -0.5, 0.5),
                                (-0.5, -0.5, -0.5), (0.5, -0.5, -0.5), (0.5, 0.5, -0.5), (-0.5, 0.5, -0.5),
@@ -222,8 +220,10 @@ def create_ik_rig(base_joint):
     ik_grp.setTranslation(new_trans, space="world")
     ik_grp.setRotation(new_rot, space="world")
     pm.parent(ik_ctrl, ik_grp)
+    # Create ik handle
+    ik_handle = pm.ikHandle(sj=ik_chain[0], ee=ik_chain[-1], sol='ikRPsolver', p=2, w=1,
+                            name="{}{}".format(ik_chain[-1].name(), "_ikHandle"))[0]
 
-    ik_handle = pm.ikHandle(sj=ik_chain[0], ee=ik_chain[-1], sol='ikRPsolver', p=2, w=1)[0]
     # Create pole vector
     pv_ctrl = pm.curve(d=1, p=[(0, 3.21, 0), (0, 2.96, 1.23), (0, 2.27, 2.27), (0, 1.23, 2.96), (0, 0, 3.21),
                                (0, -1.23, 2.96), (0, -2.27, 2.27), (0, -2.97, 1.23), (0, -3.21, 0), (0, -2.96, -1.23),
@@ -243,18 +243,22 @@ def create_ik_rig(base_joint):
                                (2.97, 1.23, 0), (3.21, 0, 0), (2.27, 0, 2.27), (0, 0, 3.21), (-2.27, 0, 2.27),
                                (-3.21, 0, 0), (-2.27, 0, -2.27), (0, 0, -3.21), (2.27, 0, -2.27), (3.21, 0, 0),
                                (2.27, 0, 2.27), (0, 0, 3.21)], name=ik_ctrl.name().replace("_CTRL", "_PV"))
+    pm.select(pv_ctrl + ".cv[47]")
+    pm.delete()
+    pm.select(clear=True)
+
     # Create zero group
     pv_grp = pm.group(empty=True, name="{}{}".format(pv_ctrl.name(), "_ZERO_GRP"))
     pm.parent(pv_ctrl, pv_grp)
     # Move the pole vector
-    # TODO: Replace calculate pole vector function with pymel version
     pv_position = calculatePoleVectorPosition(ik_chain)
     pv_grp.setTranslation(pv_position, space="world")
-
+    # Constrain the pole vector and ik wrist to their controls
     pm.poleVectorConstraint(pv_ctrl, ik_handle)
     pm.orientConstraint(ik_ctrl, ik_chain[-1])
 
-
+    # Parent the ik handle to the ik control
+    pm.parent(ik_handle, ik_ctrl)
 
 
 def fk_ik_hinge(joint_chain):
