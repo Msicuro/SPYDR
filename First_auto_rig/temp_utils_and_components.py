@@ -260,38 +260,50 @@ def create_ik_rig(base_joint):
     # Parent the ik handle to the ik control
     pm.parent(ik_handle, ik_ctrl)
 
+    return ik_chain, ik_ctrl
 
-def fk_ik_hinge(joint_chain):
+
+def fk_ik_hinge(base_joint):
     '''
 
     Args:
-        joint_chain:
+        base_joint:
 
     Returns:
         FK Chain, IK Chain, IK Handle, Blend Chain
     '''
 
-    # Create FK chain
-    fk_grps, fk_chain = create_fk_rig(joint_chain)
+    # Create the blend chain
+    # Create the blend control
+    # Move the blend control
+    # Add any attributes to the blend control
+    # Create an FK rig
+    # Create an IK rig
+    # Constrain the blend chain to the FK and IK chains
+    # Connect the blend control blend attribute to the blend chain constraints
 
-
-    # Create IK chain
-    ik_chain = list_joint_chain(pm.duplicate(joint_chain[0])[0])
-
-    for i in ik_chain:
+    # Save blend chain names
+    blend_chain_names = []
+    for i in list_joint_chain(base_joint[0]):
         if "_JNT" in i.name():
-            i.rename(split_name(i, "_JNT", rig_chains[2]))
+            blend_chain_names.append(split_name(i, "_JNT", rig_chains[0]))
         else:
-            i.rename("{}{}".format(i, rig_chains[2]))
+            blend_chain_names.append("{}{}{}".format(i, rig_chains[0], type[0]))
 
     # Create blend chain
-    blend_chain = list_joint_chain(pm.duplicate(joint_chain[0])[0])
+    blend_chain = list_joint_chain(pm.duplicate(base_joint[0], renameChildren=True)[0])
 
-    for i in blend_chain:
-        if "_JNT" in i.name():
-            i.rename(split_name(i, "_JNT", rig_chains[0]))
-        else:
-            i.rename("{}{}".format(i, rig_chains[0]))
+    # Rename the blend chain
+    for i, e in enumerate(blend_chain):
+        e.rename(blend_chain_names[i])
+
+    # Create blend control
+    blend_ctrl = pm.curve(d=1, )
+    # Create FK chain
+    fk_grps, fk_chain = create_fk_rig(base_joint)
+
+    # Create IK chain
+    ik_chain, ik_ctrl = create_ik_rig(base_joint)
 
 
 def calculatePoleVectorPosition(joints):
@@ -314,6 +326,9 @@ def calculatePoleVectorPosition(joints):
         raise RuntimeError("Please select three joints in a chain")
 
     return (finalV)
+
+
+
 
 
 def create_attach_controls(objects, type):
