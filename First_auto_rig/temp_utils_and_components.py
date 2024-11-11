@@ -315,12 +315,29 @@ def fk_ik_hinge(base_joint):
         new_trans[0] -= 5
 
     blend_grp.setTranslation(new_trans, space="world")
+    pm.pointConstraint(blend_chain[-1], blend_grp, maintainOffset=True)
+
+    # Add FKIK attribute to the blend control
+    blend_ctrl.addAttr("FK_IK", attributeType="double", min=0, max=1, defaultValue=1)
+    blend_ctrl.FK_IK.set(keyable=True)
 
     # Create FK chain
-    # fk_grps, fk_chain = create_fk_rig(base_joint)
+    fk_grps, fk_chain = create_fk_rig(base_joint)
 
     # Create IK chain
-    # ik_chain, ik_ctrl = create_ik_rig(base_joint)
+    ik_chain, ik_ctrl = create_ik_rig(base_joint)
+
+    # Parent constrain the blend chain to the ik and fk chains
+    blend_constraints = [pm.parentConstraint(fk_chain[i], ik_chain[i], e) for i, e in enumerate(blend_chain)]
+    # Create the reverse node
+    reverse_node = pm.createNode("reverse", name = "{}_reverse".format(blend_ctrl))
+    # Connect blend control FK IK attribute to reverse node
+    blend_ctrl.FK_IK >> reverse_node.inputX
+    # Connect blend control FK IK attribute to the FK attribute on the parent constraints
+    # Connect blend control reverse node to the IK attribute on the parent constraints
+    for i in blend_constraints:
+        blend_ctrl.FK_IK >> i.listAttr()[-2]
+        reverse_node.outputX >> i.listAttr()[-1]
 
 
 def calculatePoleVectorPosition(joints):
