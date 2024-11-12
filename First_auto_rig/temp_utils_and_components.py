@@ -133,7 +133,7 @@ def scale_ribbon_squash_and_stretch(curve, joints):
         curve_sqrt_invert.outputX >> i.scaleZ
 
 
-def create_fk_rig(base_joint):
+def create_fk_rig(base_joint, fk_ctrl_size=30):
     '''
 
     Args:
@@ -164,8 +164,8 @@ def create_fk_rig(base_joint):
         new_rot = i.getRotation(space="world")
 
         circ = pm.circle(name="{}".format(i.name().replace("_JNT", type[1])))
-        circ[1].normalY.set(90)
-        circ[1].radius.set(10)
+        circ[1].normalX.set(90)
+        circ[1].radius.set(fk_ctrl_size)
 
         circ[0].setTranslation(new_trans, space="world")
         circ[0].setRotation(new_rot, space="world")
@@ -213,6 +213,9 @@ def create_ik_rig(base_joint):
                        k=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
     ik_ctrl.rename(ik_chain[-1].name().replace("_JNT", type[1]))
 
+    ik_ctrl.scale.set([30, 30, 30])
+    pm.makeIdentity(ik_ctrl, t=0, r=0, s=1, apply=True)
+
     ik_ctrl.setTranslation(new_trans, space="world")
     ik_ctrl.setRotation(new_rot, space="world")
     # Create zero group
@@ -247,11 +250,14 @@ def create_ik_rig(base_joint):
     pm.delete()
     pm.select(clear=True)
 
+    pv_ctrl.scale.set([7, 7, 7])
+    pm.makeIdentity(pv_ctrl, t=0, r=0, s=1, apply=True)
+
     # Create zero group
     pv_grp = pm.group(empty=True, name="{}{}".format(pv_ctrl.name(), "_ZERO_GRP"))
     pm.parent(pv_ctrl, pv_grp)
     # Move the pole vector
-    pv_position = calculatePoleVectorPosition(ik_chain)
+    pv_position = calculatePoleVectorPosition(ik_chain, pv_distance=10)
     pv_grp.setTranslation(pv_position, space="world")
     # Constrain the pole vector and ik wrist to their controls
     pm.poleVectorConstraint(pv_ctrl, ik_handle)
@@ -260,7 +266,7 @@ def create_ik_rig(base_joint):
     # Parent the ik handle to the ik control
     pm.parent(ik_handle, ik_ctrl)
 
-    return ik_chain, ik_ctrl
+    return ik_chain, ik_ctrl, pv_grp
 
 
 def fk_ik_hinge(base_joint):
@@ -272,15 +278,6 @@ def fk_ik_hinge(base_joint):
     Returns:
         FK Chain, IK Chain, IK Handle, Blend Chain
     '''
-
-    # Create the blend chain
-    # Create the blend control
-    # Move the blend control
-    # Add any attributes to the blend control
-    # Create an FK rig
-    # Create an IK rig
-    # Constrain the blend chain to the FK and IK chains
-    # Connect the blend control blend attribute to the blend chain constraints
 
     # Save blend chain names
     blend_chain_names = []
@@ -302,6 +299,8 @@ def fk_ik_hinge(base_joint):
     # Create blend control
     blend_ctrl = pm.curve(degree=1, point=blend_ctrl_points, name="{}{}{}".format(blend_chain[-1].name(),
                                                                                   rig_chains[0], type[1]))
+    blend_ctrl.scale.set([15, 15, 15])
+    pm.makeIdentity(blend_ctrl, t=0, r=0, s=1, apply=True)
 
     # Create zero group
     blend_grp = pm.group(empty=True, name="{}{}".format(blend_ctrl.name(), "_ZERO_GRP"))
@@ -310,9 +309,9 @@ def fk_ik_hinge(base_joint):
     # Move the blend control
     new_trans = blend_chain[-1].getTranslation(space="world")
     if new_trans[0] > 0:
-        new_trans[0] += 5
+        new_trans[0] += 60
     else:
-        new_trans[0] -= 5
+        new_trans[0] -= 60
 
     blend_grp.setTranslation(new_trans, space="world")
     pm.pointConstraint(blend_chain[-1], blend_grp, maintainOffset=True)
@@ -325,7 +324,7 @@ def fk_ik_hinge(base_joint):
     fk_grps, fk_chain = create_fk_rig(base_joint)
 
     # Create IK chain
-    ik_chain, ik_ctrl = create_ik_rig(base_joint)
+    ik_chain, ik_ctrl, pv_grp = create_ik_rig(base_joint)
 
     # Parent constrain the blend chain to the ik and fk chains
     blend_constraints = [pm.parentConstraint(fk_chain[i], ik_chain[i], e) for i, e in enumerate(blend_chain)]
@@ -333,14 +332,18 @@ def fk_ik_hinge(base_joint):
     reverse_node = pm.createNode("reverse", name = "{}_reverse".format(blend_ctrl))
     # Connect blend control FK IK attribute to reverse node
     blend_ctrl.FK_IK >> reverse_node.inputX
-    # Connect blend control FK IK attribute to the FK attribute on the parent constraints
-    # Connect blend control reverse node to the IK attribute on the parent constraints
-    for i in blend_constraints:
-        blend_ctrl.FK_IK >> i.listAttr()[-2]
-        reverse_node.outputX >> i.listAttr()[-1]
+    # Connect blend control FK IK attribute to the IK attribute on the parent constraints
+    # Connect blend control reverse node to the FK attribute on the parent constraints
+    for i, e in enumerate(blend_constraints):
+        blend_ctrl.FK_IK >> e.listAttr()[-1]
+        reverse_node.outputX >> e.listAttr()[-2]
+        reverse_node.outputX >> fk_grps[i].getChildren()[0].visibility
+
+    blend_ctrl.FK_IK >> ik_ctrl.visibility
+    blend_ctrl.FK_IK >> pv_grp.getChildren()[0].visibility
 
 
-def calculatePoleVectorPosition(joints):
+def calculatePoleVectorPosition(joints, pv_distance=5):
 
     if isinstance(joints, list) and len(joints) == 3:
         startVector = joints[0].getTranslation(space="world")
@@ -354,7 +357,7 @@ def calculatePoleVectorPosition(joints):
         startEndN = startEnd.normal()
         projV = startEndN * proj
         arrowV = startMid - projV
-        arrowV *= 5
+        arrowV *= pv_distance
         finalV = arrowV + midVector
     else:
         raise RuntimeError("Please select three joints in a chain")
