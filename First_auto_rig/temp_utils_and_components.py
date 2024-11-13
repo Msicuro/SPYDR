@@ -29,7 +29,7 @@ def list_joint_chain(base_joint):
     Args:
         base_joint: The top joint in a chain
     '''
-    full_chain = base_joint.listRelatives(allDescendents=True)
+    full_chain = base_joint.listRelatives(allDescendents=True, type="joint")
     full_chain.append(base_joint)
     full_chain.reverse()
 
@@ -385,12 +385,104 @@ def parse_curve_points(curve_string):
     return space_split
 
 
-def create_attach_controls(objects, type):
+def addStretchyIK(base_joint):
     '''
-    Create and attach controls to objects
+    Create stretchy IK using the side lengths of the triangle made up of the IK joints
     Args:
-        objects:
-
-    Returns:
-
+        ctrl_joints: List of control joints
     '''
+    ctrl_joints = list_joint_chain(base_joint)
+
+    # Get the upperarm length
+    upperarm_length = ctrl_joints[1].getTranslation()[0]
+    # Get the lowerarm length
+    lowerarm_length = ctrl_joints[2].getTranslation()[0]
+
+    # Add the shoulder and elbow joint length for the arm length
+    arm_length = upperarm_length+lowerarm_length
+
+    # Create locators at the shoulder and wrist
+    start_pos = ctrl_joints[0].getTranslation(space="world")
+    end_pos = ctrl_joints[-1].getTranslation(space="world")
+
+    start_loc_name = split_name(ctrl_joints[0].name(), type[0], "_stretch")
+    end_loc_name = split_name(ctrl_joints[-1].name(), type[0], "_stretch")
+
+    start_loc = pm.spaceLocator(name=start_loc_name)
+    start_loc.setTranslation(start_pos)
+    end_loc = pm.spaceLocator(name=end_loc_name)
+    end_loc.setTranslation(end_pos)
+
+    # Create distance node for arm distance (distance between the shoulder and wrist)
+    arm_distance = pm.createNode("distanceBetween", name="{}_{}".format(ctrl_joints[-1].name(), "distanceBetween"),
+                                 skipSelect=True)
+
+    # Connect top and bottom locators to Distance node
+    start_loc.getShape().worldPosition >> arm_distance.point1
+    end_loc.getShape().worldPosition >> arm_distance.point2
+
+    # Create a multiplyDivide node (set to divide) and name it distance_divider
+    arm_divider = pm.createNode("multiplyDivide", name = "{}_{}".format(arm_distance.name(), "divide"))
+    arm_divider.operation.set(2)
+        # Set input2 of the divider to the arm length
+    arm_divider.input2X.set(upperarm_length + lowerarm_length)
+        # Plug the distance from the arm distance dimension node into the input1 of the divider
+    arm_distance.distance >> arm_divider.input1X
+
+    # Create two multDoubleLiner nodes, one for the upperarm and one for the lowerarm
+    upperarm_multiplier = pm.createNode("multDoubleLinear", name="{}_{}".format(ctrl_joints[0], "multDoubleLinear"))
+    lowerarm_multiplier = pm.createNode("multDoubleLinear", name="{}_{}".format(ctrl_joints[1], "multDoubleLinear"))
+        # Plug the output from the divider into input1 of both multDoubleLinear nodes
+    arm_divider.outputX >> upperarm_multiplier.input1
+    arm_divider.outputX >> lowerarm_multiplier.input1
+        # Set input2 of the upparm multipler to the length of the upperarm (elbow X value)
+    upperarm_multiplier.input2.set(upperarm_length)
+        # Set input2 of the lowerarm multipler to the length of the lowerarm (wrist X value)
+    lowerarm_multiplier.input2.set(lowerarm_length)
+
+    # Create two condition nodes, one for the upperarm and one for the lowerarm
+    upperarm_condition = pm.createNode("condition", name=ctrl_joints[0].name())
+    upperarm_condition.operation.set(2)
+    lowerarm_condition = pm.createNode("condition", name=ctrl_joints[1].name())
+    lowerarm_condition.operation.set(2)
+        # Plug the distance from the arm distance into FirstTerm of both condition nodes
+    arm_distance.distance >> upperarm_condition.firstTerm
+    arm_distance.distance >> lowerarm_condition.firstTerm
+        # Plug the output from the arm multipliers into ColorIfTrue of both condition nodes
+    upperarm_multiplier.output >> upperarm_condition.colorIfTrueR
+    lowerarm_multiplier.output >> lowerarm_condition.colorIfTrueR
+        # Set the SecondTerm of the both condition nodes to the arm length
+    upperarm_condition.secondTerm.set(upperarm_length + lowerarm_length)
+    lowerarm_condition.secondTerm.set(upperarm_length + lowerarm_length)
+        # Set the ColorIfFalse of the upperarm condition node to the length of the upperarm (elbow X)
+    upperarm_condition.colorIfFalseR.set(upperarm_length)
+        # Set the ColorIfFalse of the lowerarm condition node to the length of the lowerarm (wrist X)
+    lowerarm_condition.colorIfFalseR.set(lowerarm_length)
+    # Plug the OutColorR of the upperarm condition node into the translateX of the elbow joint
+    #upperarm_condition.outColorR >> ctrl_joints[1].translateX
+    # Plug the OutColorR of the lowerarm condition node into the translateX of the wrist joint
+    #lowerarm_condition.outColorR >> ctrl_joints[2].translateX
+
+    # Get the ik handle and the ik control before re-parenting
+    ik_handle = ctrl_joints[0].listConnections(type="ikHandle")[0]
+    ik_ctrl = ik_handle.getParent()
+    # Parent the IK handle under the 2nd locator
+    pm.parent(ik_handle, end_loc)
+    # Parent the 2nd locator under the IK control
+    pm.parent(end_loc, ik_ctrl)
+
+    # Add stretchy IK attribute to ik control
+    ik_ctrl.addAttr("Stretchy_IK", attributeType="double", min=0, max=1, defaultValue=0)
+    ik_ctrl.Stretchy_IK.set(keyable=True)
+    # Create blendColors node
+    stretchy_blendColors = pm.createNode("blendColors", name="{}_{}".format(ik_ctrl.name(), "blendColors"))
+        # Set the default joint lengths to the color2 attributes
+    stretchy_blendColors.color2R.set(upperarm_length)
+    stretchy_blendColors.color2G.set(lowerarm_length)
+        # Connect the stretchy IK attribute and condition nodes to the blendColors node
+    ik_ctrl.Stretchy_IK >> stretchy_blendColors.blender
+    upperarm_condition.outColorR >> stretchy_blendColors.color1R
+    lowerarm_condition.outColorR >> stretchy_blendColors.color1G
+        # Connect the blendColors node outputs to the ik joints
+    stretchy_blendColors.outputR >> ctrl_joints[1].translateX
+    stretchy_blendColors.outputG >> ctrl_joints[2].translateX
