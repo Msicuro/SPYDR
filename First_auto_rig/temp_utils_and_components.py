@@ -154,6 +154,7 @@ def create_fk_rig(base_joint, fk_ctrl_size=30):
     fk_chain = list_joint_chain(pm.duplicate(base_joint[0], renameChildren=True)[0])
 
     # Rename the FK chain
+    print(fk_chain_names)
     for i, e in enumerate(fk_chain):
         e.rename(fk_chain_names[i])
 
@@ -217,11 +218,11 @@ def create_ik_rig(base_joint):
     pm.makeIdentity(ik_ctrl, t=0, r=0, s=1, apply=True)
 
     ik_ctrl.setTranslation(new_trans, space="world")
-    ik_ctrl.setRotation(new_rot, space="world")
+    #ik_ctrl.setRotation(new_rot, space="world")
     # Create zero group
     ik_grp = pm.group(empty=True, name="{}{}".format(ik_ctrl.name(), "_ZERO_GRP"))
     ik_grp.setTranslation(new_trans, space="world")
-    ik_grp.setRotation(new_rot, space="world")
+    #ik_grp.setRotation(new_rot, space="world")
     pm.parent(ik_ctrl, ik_grp)
     # Create ik handle
     ik_handle = pm.ikHandle(sj=ik_chain[0], ee=ik_chain[-1], sol='ikRPsolver', p=2, w=1,
@@ -265,6 +266,15 @@ def create_ik_rig(base_joint):
 
     # Parent the ik handle to the ik control
     pm.parent(ik_handle, ik_ctrl)
+
+    # Create IK control group
+    ik_ctrl_grp = pm.group(empty=True, name="{}{}".format(ik_ctrl.name().split(type[1])[0], type[2]))
+    ik_ctrl_grp.setTranslation(ik_chain[0].getTranslation(space="world"), space="world")
+    ik_ctrl_grp.setRotation(ik_chain[0].getRotation(space="world"), space="world")
+
+    pm.parent(ik_grp, ik_ctrl_grp)
+    pm.parent(pv_grp, ik_ctrl_grp)
+
 
     return ik_chain, ik_ctrl, pv_grp
 
@@ -327,7 +337,7 @@ def fk_ik_hinge(base_joint):
     ik_chain, ik_ctrl, pv_grp = create_ik_rig(base_joint)
 
     # Parent constrain the blend chain to the ik and fk chains
-    blend_constraints = [pm.parentConstraint(fk_chain[i], ik_chain[i], e) for i, e in enumerate(blend_chain)]
+    blend_constraints = [pm.parentConstraint(fk_chain[i], ik_chain[i], e, maintainOffset=True) for i, e in enumerate(blend_chain)]
     # Create the reverse node
     reverse_node = pm.createNode("reverse", name = "{}_reverse".format(blend_ctrl))
     # Connect blend control FK IK attribute to reverse node
@@ -341,6 +351,20 @@ def fk_ik_hinge(base_joint):
 
     blend_ctrl.FK_IK >> ik_ctrl.visibility
     blend_ctrl.FK_IK >> pv_grp.getChildren()[0].visibility
+
+    # Create ctrl joint group
+    ctrl_jnt_grp_trans = base_joint[0].getTranslation(space="world")
+    ctrl_jnt_grp_rot = base_joint[0].getRotation(space="world")
+
+    ctrl_jnt_grp = pm.group(empty=True, name="{}{}".format(base_joint[0].name(), type[2]))
+    ctrl_jnt_grp.setTranslation(ctrl_jnt_grp_trans, space="world")
+    ctrl_jnt_grp.setRotation(ctrl_jnt_grp_rot, space="world")
+
+    pm.parent(blend_chain[0], ctrl_jnt_grp)
+    pm.parent(fk_chain[0], ctrl_jnt_grp)
+    pm.parent(ik_chain[0], ctrl_jnt_grp)
+
+    return ik_chain, fk_chain, blend_chain
 
 
 def calculatePoleVectorPosition(joints, pv_distance=5):
@@ -486,3 +510,12 @@ def addStretchyIK(base_joint):
         # Connect the blendColors node outputs to the ik joints
     stretchy_blendColors.outputR >> ctrl_joints[1].translateX
     stretchy_blendColors.outputG >> ctrl_joints[2].translateX
+
+def save_duplicate_chain_names(base_joint):
+    pass
+    chain_names = [i.name() for i in list_joint_chain(base_joint[0])]
+    for i in chain_names:
+        if "_JNT" in i:
+            i = split_name(i, "_JNT", rig_chains[1])
+        else:
+            i = "{}{}{}".format(i.name(), rig_chains[1], type[0])
