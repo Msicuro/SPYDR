@@ -1,6 +1,6 @@
 import pymel.core as pm
 
-rig_chains = ["_BLEND", "_FK", "_IK"]
+rig_chains = ["_BLEND", "_FK", "_IK", "REVERSE"]
 type = ["_JNT", "_CTRL", "_GRP"]
 spine_chain = pm.selected()
 
@@ -521,7 +521,7 @@ def save_duplicate_chain_names(base_joint):
             i = "{}{}{}".format(i.name(), rig_chains[1], type[0])
 
 
-def create_reverse_foot(ankle_ik_joint, ankle_ik_ctrl=None, inner_offset=30, outer_offset=30, toetip_offset=30, heel_offset=64):
+def create_reverse_foot(ankle_ik_joint, ankle_ik_ctrl, inner_offset=30, outer_offset=30, toetip_offset=5, heel_offset=64):
     # In->Out->Heel->Toe->Ball->Ankle
     # Get the IK foot chain
     # Save the positions for the reverse group hierarchy
@@ -530,7 +530,8 @@ def create_reverse_foot(ankle_ik_joint, ankle_ik_ctrl=None, inner_offset=30, out
     # Parent the groups in the reverse hierarchy
     # Create the ball IK handle
     # Create the toe IK handle
-    # TODO: Add reverse foot attributes to ankle control - Foot Roll, Heel Twist, Toe Twist, Bank
+    # Add reverse foot attributes to ankle control - Foot Roll, Heel Twist, Toe Twist, Bank
+    # TODO: Connect ik control attributes to reverse foot joints and groups
     ik_foot_chain = list_joint_chain(ankle_ik_joint[0])
 
     toe_pos = ik_foot_chain[-1].getTranslation(space="world")
@@ -549,7 +550,7 @@ def create_reverse_foot(ankle_ik_joint, ankle_ik_ctrl=None, inner_offset=30, out
     heel_pos[1] = 0
     heel_pos[-1] -= heel_offset
 
-    toetip_pos = [i for i in ball_pos]
+    toetip_pos = [i for i in toe_pos]
     toetip_pos[1] = 0
     toetip_pos[-1] += toetip_offset
 
@@ -559,41 +560,56 @@ def create_reverse_foot(ankle_ik_joint, ankle_ik_ctrl=None, inner_offset=30, out
     out_bank_grp = pm.group(empty=True, name="outer")
     out_bank_grp.setTranslation(out_bank_pos, space="world")
 
-    heel_grp = pm.group(empty=True, name="heel")
-    heel_grp.setTranslation(heel_pos, space="world")
-
-    toetip_grp = pm.group(empty=True, name="toetip")
-    toetip_grp.setTranslation(toetip_pos, space="world")
-
-    ball_grp = pm.group(empty=True, name="ball")
-    ball_grp.setTranslation(ball_pos, space="world")
-
-    ankle_grp = pm.group(empty=True, name="ankle")
-    ankle_grp.setTranslation(ankle_pos, space="world")
-
-    pm.parent(ankle_grp, ball_grp)
-    pm.parent(ball_grp, toetip_grp)
-    pm.parent(toetip_grp, heel_grp)
-    pm.parent(heel_grp, out_bank_grp)
     pm.parent(out_bank_grp, in_bank_grp)
+
+    # Save reverse foot chain positions
+    reverse_foot_chain_pos = []
+    reverse_foot_chain_pos.append(heel_pos)
+    reverse_foot_chain_pos.append(toetip_pos)
+    reverse_foot_chain_pos.append(ball_pos)
+    reverse_foot_chain_pos.append(ankle_pos)
+
+    # Save reverse foot chain names
+    reverse_foot_chain_names = []
+    for i in ik_foot_chain:
+        if "_IK" in i.name():
+            reverse_foot_chain_names.append(i.name().replace("_IK", rig_chains[3]))
+        else:
+            reverse_foot_chain_names.append("{}{}{}".format(i, rig_chains[3], type[0]))
+    reverse_foot_chain_names.append("{}{}{}".format("heel_", rig_chains[3], type[0]))
+    reverse_foot_chain_names.reverse()
+
+    # Create reverse foot chain
+    reverse_foot_chain = [pm.joint() for i in range(4)]
+    # Move the reverse joints into place
+    for i, e in enumerate(reverse_foot_chain):
+        e.setTranslation(reverse_foot_chain_pos[i], space="world")
+
+    # Rename the reverse joint chain
+    for i, e in enumerate(reverse_foot_chain):
+        e.rename(reverse_foot_chain_names[i])
+
+    # Parent the reverse joint chain
+    for i in range(len(reverse_foot_chain)-1):
+        pm.parent(reverse_foot_chain[i+1], reverse_foot_chain[i])
 
     ankle_ik_handle = [i for i in ankle_ik_ctrl[0].listRelatives(c=1) if i.nodeType() == "ikHandle"][0]
     ball_ik_handle = pm.ikHandle(startJoint=ik_foot_chain[0], endEffector=ik_foot_chain[1], solver="ikSCsolver", priority=2, weight=1)
     toe_ik_handle = pm.ikHandle(startJoint=ik_foot_chain[1], endEffector=ik_foot_chain[2], solver="ikSCsolver", priority=2, weight=1)
 
-    pm.parent(ankle_ik_handle, ankle_grp)
-    pm.parent(ball_ik_handle, ball_grp)
-    pm.parent(toe_ik_handle, toetip_grp)
+    pm.parent(ankle_ik_handle, reverse_foot_chain[-1])
+    pm.parent(ball_ik_handle, reverse_foot_chain[-2])
+    pm.parent(toe_ik_handle, reverse_foot_chain[-3])
 
     pm.parent(in_bank_grp, ankle_ik_ctrl[0])
 
-    ankle_ik_ctrl.addAttr("Heel_Twist", attributeType="double", defaultValue=0)
-    ankle_ik_ctrl.addAttr("Heel_Roll", attributeType="double", defaultValue=0)
-    ankle_ik_ctrl.addAttr("Toe_Twist", attributeType="double", defaultValue=0)
-    ankle_ik_ctrl.addAttr("Toe_Roll", attributeType="double", defaultValue=0)
-    ankle_ik_ctrl.addAttr("Ball_Roll", attributeType="double", defaultValue=0)
-    ankle_ik_ctrl.addAttr("Toe_Tap", attributeType="double", defaultValue=0)
-    ankle_ik_ctrl.addAttr("Bank", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl[0].addAttr("Heel_Twist", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl[0].addAttr("Heel_Roll", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl[0].addAttr("Toe_Twist", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl[0].addAttr("Toe_Roll", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl[0].addAttr("Ball_Roll", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl[0].addAttr("Toe_Tap", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl[0].addAttr("Bank", attributeType="double", defaultValue=0)
 
 
 
