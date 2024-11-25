@@ -519,3 +519,85 @@ def save_duplicate_chain_names(base_joint):
             i = split_name(i, "_JNT", rig_chains[1])
         else:
             i = "{}{}{}".format(i.name(), rig_chains[1], type[0])
+
+
+def create_reverse_foot(ankle_ik_joint, ankle_ik_ctrl=None, inner_offset=30, outer_offset=30, toetip_offset=30, heel_offset=64):
+    # In->Out->Heel->Toe->Ball->Ankle
+    # Get the IK foot chain
+    # Save the positions for the reverse group hierarchy
+    # Create the groups for the reverse hierarchy
+    # Position the groups for the reverse hierarchy
+    # Parent the groups in the reverse hierarchy
+    # Create the ball IK handle
+    # Create the toe IK handle
+    # TODO: Add reverse foot attributes to ankle control - Foot Roll, Heel Twist, Toe Twist, Bank
+    ik_foot_chain = list_joint_chain(ankle_ik_joint[0])
+
+    toe_pos = ik_foot_chain[-1].getTranslation(space="world")
+    ball_pos = ik_foot_chain[1].getTranslation(space="world")
+    ankle_pos = ik_foot_chain[0].getTranslation(space="world")
+
+    in_bank_pos = [i for i in ball_pos]
+    in_bank_pos[1] = 0
+    in_bank_pos[0] -= inner_offset
+
+    out_bank_pos = [i for i in ball_pos]
+    out_bank_pos[1] = 0
+    out_bank_pos[0] += outer_offset
+
+    heel_pos = [i for i in ball_pos]
+    heel_pos[1] = 0
+    heel_pos[-1] -= heel_offset
+
+    toetip_pos = [i for i in ball_pos]
+    toetip_pos[1] = 0
+    toetip_pos[-1] += toetip_offset
+
+    in_bank_grp = pm.group(empty=True, name="inner")
+    in_bank_grp.setTranslation(in_bank_pos, space="world")
+
+    out_bank_grp = pm.group(empty=True, name="outer")
+    out_bank_grp.setTranslation(out_bank_pos, space="world")
+
+    heel_grp = pm.group(empty=True, name="heel")
+    heel_grp.setTranslation(heel_pos, space="world")
+
+    toetip_grp = pm.group(empty=True, name="toetip")
+    toetip_grp.setTranslation(toetip_pos, space="world")
+
+    ball_grp = pm.group(empty=True, name="ball")
+    ball_grp.setTranslation(ball_pos, space="world")
+
+    ankle_grp = pm.group(empty=True, name="ankle")
+    ankle_grp.setTranslation(ankle_pos, space="world")
+
+    pm.parent(ankle_grp, ball_grp)
+    pm.parent(ball_grp, toetip_grp)
+    pm.parent(toetip_grp, heel_grp)
+    pm.parent(heel_grp, out_bank_grp)
+    pm.parent(out_bank_grp, in_bank_grp)
+
+    ankle_ik_handle = [i for i in ankle_ik_ctrl[0].listRelatives(c=1) if i.nodeType() == "ikHandle"][0]
+    ball_ik_handle = pm.ikHandle(startJoint=ik_foot_chain[0], endEffector=ik_foot_chain[1], solver="ikSCsolver", priority=2, weight=1)
+    toe_ik_handle = pm.ikHandle(startJoint=ik_foot_chain[1], endEffector=ik_foot_chain[2], solver="ikSCsolver", priority=2, weight=1)
+
+    pm.parent(ankle_ik_handle, ankle_grp)
+    pm.parent(ball_ik_handle, ball_grp)
+    pm.parent(toe_ik_handle, toetip_grp)
+
+    pm.parent(in_bank_grp, ankle_ik_ctrl[0])
+
+    ankle_ik_ctrl.addAttr("Heel_Twist", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl.addAttr("Heel_Roll", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl.addAttr("Toe_Twist", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl.addAttr("Toe_Roll", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl.addAttr("Ball_Roll", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl.addAttr("Toe_Tap", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl.addAttr("Bank", attributeType="double", defaultValue=0)
+
+
+
+
+# TODO: Add space switch on pole vectors
+def add_space_switch(parent_a, parent_b, target_grp):
+    pass
