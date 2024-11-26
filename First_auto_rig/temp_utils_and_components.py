@@ -560,6 +560,9 @@ def create_reverse_foot(ankle_ik_joint, ankle_ik_ctrl, inner_offset=30, outer_of
     out_bank_grp = pm.group(empty=True, name="outer")
     out_bank_grp.setTranslation(out_bank_pos, space="world")
 
+    toe_tap_grp = pm.group(empty=True, name="toe_tap")
+    toe_tap_grp.setTranslation(ball_pos, space="world")
+
     pm.parent(out_bank_grp, in_bank_grp)
 
     # Save reverse foot chain positions
@@ -599,17 +602,51 @@ def create_reverse_foot(ankle_ik_joint, ankle_ik_ctrl, inner_offset=30, outer_of
 
     pm.parent(ankle_ik_handle, reverse_foot_chain[-1])
     pm.parent(ball_ik_handle, reverse_foot_chain[-2])
-    pm.parent(toe_ik_handle, reverse_foot_chain[-3])
+    pm.parent(toe_ik_handle, toe_tap_grp)
+    pm.parent(toe_tap_grp, reverse_foot_chain[-3])
 
     pm.parent(in_bank_grp, ankle_ik_ctrl[0])
 
     ankle_ik_ctrl[0].addAttr("Heel_Twist", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl[0].Heel_Twist.set(keyable=True)
     ankle_ik_ctrl[0].addAttr("Heel_Roll", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl[0].Heel_Roll.set(keyable=True)
     ankle_ik_ctrl[0].addAttr("Toe_Twist", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl[0].Toe_Twist.set(keyable=True)
     ankle_ik_ctrl[0].addAttr("Toe_Roll", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl[0].Toe_Roll.set(keyable=True)
     ankle_ik_ctrl[0].addAttr("Ball_Roll", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl[0].Ball_Roll.set(keyable=True)
     ankle_ik_ctrl[0].addAttr("Toe_Tap", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl[0].Toe_Tap.set(keyable=True)
     ankle_ik_ctrl[0].addAttr("Bank", attributeType="double", defaultValue=0)
+    ankle_ik_ctrl[0].Bank.set(keyable=True)
+
+
+    ankle_ik_ctrl[0].Heel_Twist >> reverse_foot_chain[0].rotateY
+    ankle_ik_ctrl[0].Heel_Roll >> reverse_foot_chain[0].rotateX
+    ankle_ik_ctrl[0].Toe_Twist >> reverse_foot_chain[1].rotateY
+    ankle_ik_ctrl[0].Toe_Roll >> reverse_foot_chain[1].rotateX
+    ankle_ik_ctrl[0].Ball_Roll >> reverse_foot_chain[2].rotateX
+    ankle_ik_ctrl[0].Toe_Tap >> toe_tap_grp.rotateX
+
+    bank_condition_node = pm.createNode("condition")
+    bank_condition_node.operation.set(2)
+    bank_condition_node.colorIfFalseR.set(0)
+
+    in_invert_mult = pm.createNode("multDoubleLinear")
+    in_invert_mult.input2.set(-1)
+    out_invert_mult = pm.createNode("multDoubleLinear")
+    out_invert_mult.input2.set(-1)
+
+    ankle_ik_ctrl[0].Bank >> bank_condition_node.firstTerm
+    ankle_ik_ctrl[0].Bank >> bank_condition_node.colorIfTrueR
+    ankle_ik_ctrl[0].Bank >> bank_condition_node.colorIfFalseG
+    bank_condition_node.outColorR >> out_invert_mult.input1
+    out_invert_mult.output >> out_bank_grp.rotateZ
+    bank_condition_node.outColorG >> in_invert_mult.input1
+    in_invert_mult.output >> in_bank_grp.rotateZ
+
 
 
 
