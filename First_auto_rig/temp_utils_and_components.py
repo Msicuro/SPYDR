@@ -664,5 +664,35 @@ def create_reverse_foot(ankle_ik_joint, ankle_ik_ctrl, inner_offset=30, outer_of
 
 
 # TODO: Add space switch on pole vectors
-def add_space_switch(parent_a, parent_b, target_grp):
-    pass
+def add_space_switch(attr_ctrl, attr_name="Inherit_Transforms", parent_world=None, parent_local=None, target_grp=None):
+    '''
+    Add space switching to a control
+    Args:
+        attr_ctrl: The rig control that will hold the attribute manipulating the space switching
+        attr_name: Name of the attribute on the control
+        parent_world: The world or higher level parent space
+        parent_local: The world or lower level parent space
+        target_grp: The control group or object to move between parent spaces
+    Returns:
+
+    '''
+    # Save the control and save parent objects if selected
+    attr_ctrl = attr_ctrl[0]
+    if not parent_world:
+        parent_world = pm.selected()[0]
+    if not parent_local:
+        parent_local = pm.selected()[1]
+    if not target_grp:
+        target_grp = pm.selected()[2]
+
+    parent_constraint = pm.parentConstraint(parent_world, parent_local, target_grp, maintainOffset=True)
+
+    # Add the switching attribute to the control and create the needed reverse node
+    attr_ctrl.addAttr(attr_name, attributeType="double", min=0, max=1, defaultValue=1)
+    attr_ctrl.listAttr()[-1].set(keyable=True)
+    reverse_node = pm.createNode("reverse", name="{}_{}_reverse".format(attr_ctrl.name(), attr_name))
+
+    # Connect the attributes to the constraint
+    attr_ctrl.listAttr()[-1] >> parent_constraint.listAttr()[-1]
+    attr_ctrl.listAttr()[-1] >> reverse_node.inputX
+    reverse_node.outputX >> parent_constraint.listAttr()[-2]
