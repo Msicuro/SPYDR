@@ -4,4 +4,6 @@
 "fk_joints": ["s_fk_shoulder_JNT", "s_fk_elbow_JNT", "s_fk_wrist_JNT"],
 "ik_joints": ["s_ik_shoulder_JNT", "s_ik_elbow_JNT", "s_ik_wrist_JNT"],
 "positions": [[-7.253066, 0, 0.590704], [-1.365397, 0, -0.939316], [4.193028, 0, 0.861846]],
-"rig_joints": ["s_rig_shoulder_JNT", "s_rig_elbow_JNT", "s_rig_wrist_JNT"]}
+"rig_joints": ["s_rig_shoulder_JNT", "s_rig_elbow_JNT", "s_rig_wrist_JNT"],
+"joint_orientation": "xzy",
+"secondary_axis_orient": "zup"}

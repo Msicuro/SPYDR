@@ -152,6 +152,7 @@ def create_fk_rig(base_joint, fk_ctrl_size=30):
 
     # Create FK chain
     fk_chain = list_joint_chain(pm.duplicate(base_joint[0], renameChildren=True)[0])
+    pm.parent(fk_chain[0], world=True)
 
     # Rename the FK chain
     print(fk_chain_names)
@@ -696,3 +697,100 @@ def add_space_switch(attr_ctrl, attr_name="Inherit_Transforms", parent_world=Non
     attr_ctrl.listAttr()[-1] >> parent_constraint.listAttr()[-1]
     attr_ctrl.listAttr()[-1] >> reverse_node.inputX
     reverse_node.outputX >> parent_constraint.listAttr()[-2]
+
+    def create_wrist_correctives():
+        ## Add wrist corrective joint functionality ##
+
+        # Pre-reqs:
+        # Create an offset group at the base of the wrist
+        # Create a control for the corrective joint
+        # ensure the corrective joint is parented to the wrist joint
+        wrist_joint = pm.selected()[0]
+        wrist_corr_base = pm.selected()[0]
+        wrist_corr_zero_grp = pm.selected()[0]
+
+        # For rotation of the base:
+        # Create a multDoubleLinear node and set input2 to -0.630
+        rot_multDL = pm.createNode("multDoubleLinear", name="right_wrist_top_corr_rot_multDoubleLinear")
+        rot_multDL.input2.set(-0.630)
+        # Connect the rotate Z of the wrist joint to the input1 of the multDoubleLinear
+        wrist_joint.rotateZ >> rot_multDL.input1
+        # Connect the output of the multDoubleLinear to the rotate Z of the base corrective control offset group
+        rot_multDL.output >> wrist_corr_base.rotateZ
+
+        # For translation of the corrective joint:
+        # Create a multDoubleLinear node, set input2 to .25 and connect the Rotate Z of the wrist joint to input1
+        tran_multDL = pm.createNode("multDoubleLinear", name="right_wrist_top_corr_transl_multDoubleLinear")
+        tran_multDL.input2.set(0.25)
+        wrist_joint.rotateZ >> tran_multDL.input1
+        # Create a multiplyDivide node, set operation to Divide, set input2X to -7.609
+        tran_multDV = pm.createNode("multiplyDivide", name="right_wrist_top_corr_transl_scalefactor_multiplyDivide")
+        tran_multDV.operation.set(2)
+        tran_multDV.input2X.set(7.609)
+        # Connect the Output from the multDoubleLinear node to the input1X of the multiplyDivide
+        tran_multDL.output >> tran_multDV.input1X
+        # Create a condition node and connect the output of the multiplyDivide to the colorIfTrueR and First Term
+        tran_condition = pm.createNode("condition", name="right_wrist_top_corr_transl_condition")
+        tran_multDV.outputX >> tran_condition.colorIfTrueR
+        tran_multDV.outputX >> tran_condition.firstTerm
+        # Set operation to Greater Than and Second Term to 1
+        tran_condition.operation.set(2)
+        tran_condition.secondTerm.set(1)
+        # Create a scaleFactor multDoubleLinear node
+        tran_scalefactor_multDL = pm.createNode("multDoubleLinear",
+                                                name="right_wrist_top_corr_transl_scalefactor_multDoubleLinear")
+        # Connect outColorX of the condition node to the
+        tran_condition.outColorR >> tran_scalefactor_multDL.input1
+        tran_scalefactor_multDL.input2.set(-7.609)
+        # Connect the output of the scalefactor multDoubleLinear to the Translate Y of the corrective control zero group
+        tran_scalefactor_multDL.output >> wrist_corr_zero_grp.translateY
+
+
+def add_hand_settings(hand_settings_ctrl, finger_ctrls=None):
+    '''
+    Adds attributes for controlling finger rotation to a designated settings control curve
+    Args:
+        hand_settings_ctrl: The control curve that will hold the finger/hand attributes
+        finger_ctrls: The individual FK control curves of the fingers
+
+    '''
+
+    ## Add hand settings ##
+    hand_settings_ctrl = hand_settings_ctrl[0]
+    # Pre-req: have a hand setting control
+    print(hand_settings_ctrl)
+    # Add attributes
+    hand_settings_ctrl.addAttr("FINGERS", attributeType="enum", enumName="---")
+    hand_settings_ctrl.FINGERS.set(keyable=True)
+    attribute_names = ["Thumb_Curl", "Index_Curl", "Middle_Curl", "Ring_Curl", "Pinky_Curl"]
+    for i in attribute_names:
+        hand_settings_ctrl.addAttr(i, attributeType="double", defaultValue=0)
+        # hand_settings_ctrl.i.set(keyable=True)
+        pm.setAttr("{}.{}".format(hand_settings_ctrl.name(), i), keyable=True)
+
+    # Create buffer groups above finger controls if not already there
+    if not finger_ctrls:
+        raise RuntimeError("No finger controls available")
+    else:
+        buff_groups = []
+        for i in finger_ctrls:
+            print(i)
+            # Get parent
+            zero_grp =  i.listRelatives(parent=True)[0]
+
+            # Create buffer group
+            buff_grp = pm.group(empty=True)
+            pm.delete(pm.parentConstraint(zero_grp, buff_grp, maintainOffset=False))
+            buff_grp.rename(zero_grp.name().replace("ZERO", "BUFF"))
+            buff_groups.append(buff_grp)
+            pm.parent(buff_grp, zero_grp)
+            pm.parent(i, buff_grp)
+
+    # Connect attributes to finger controls
+    inc = 0
+    for attr in attribute_names:
+        for buffer in buff_groups[inc:inc+3]:
+            # hand_settings_ctrl.attr >> buffer.rotateZ
+            pm.connectAttr("{}.{}".format(hand_settings_ctrl, attr), "{}.rotateZ".format(buffer))
+
+        inc += 3

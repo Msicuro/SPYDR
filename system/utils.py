@@ -22,22 +22,25 @@ def createJoint(name, position, instance):
 	return(joint_list)
 
 
-def createControl(ctrlInfo):
+def createControl(ctrlInfo, flip=True):
 	'''
 	Iterates through joint_names+positions to create control curves
 	'''
 	control_info = []
 	for info in ctrlInfo:
-		#Get WS position of joint
-		pos = info[0]
 		#Create an empty group
-		ctrl_group = cmds.group(em=1, n="group_" + info[1])
+		ctrl_group = cmds.group(em=1, n="{}_GRP".format(info[1]) )
 		#Create circle control object
 		ctrl = cmds.circle(n=info[1])
+		if flip:
+			cmds.setAttr("{}.normalX".format(ctrl[1]), 90)
 		#Parent the control under the group
 		cmds.parent(ctrl,ctrl_group)
-		#Move the group to the joint
-		cmds.xform(ctrl_group, t = pos, ws = True)
+		#Move the group to the joint, if it's a list of translations; use those, else match the transforms
+		if type(info[0]) == list:
+			cmds.xform(ctrl_group, t = info[0], ws = True)
+		else:
+			cmds.matchTransform(ctrl_group, info[0])
 		#Append control info to control_info List
 		control_info.append([ctrl_group, ctrl])
 	return(control_info)
@@ -126,6 +129,33 @@ def connectBlendColors(blend_attr, direct_conn_attrs, blend_conn_attrs, instance
 		cmds.connectAttr("{}.outputR".format(bcNode), "{}".format(i))
 
 	return bcNode
+
+
+def re_orient_joints(joints=[], primary_orient="xzy", secondary_orient="zup", clean_zero=[]):
+	'''
+	Set the joint orientations for specified joints and zero out rotations and joint orientations on remaining floating
+	joints
+	Args:
+		joints(List): Joints to re-orient
+		orient(String): Preferred primary and secondary axes
+		secondary_orient(String): Preferred seccondary axis orient/world direction
+		clean_zero(List): Any joints that need to be zeroed out in rotations and joint orients
+	Returns:
+		None
+	'''
+	# Set the orientation and secondary axis orientation
+	if joints:
+		for i in joints:
+			cmds.joint(i, edit=True, orientJoint=primary_orient,
+					   secondaryAxisOrient=secondary_orient,
+					   children=True,
+					   zeroScaleOrient=True)
+
+	# Zero out the rotations and joint orients on any specified joints
+	if clean_zero:
+		for i in clean_zero:
+			cmds.setAttr("{}.jointOrient".format(i), 0, 0, 0)
+			cmds.setAttr("{}.rotate".format(i), 0, 0, 0)
 
 
 def text_to_hex(txt = ''):
