@@ -197,8 +197,8 @@ def create_ik_rig(base_joint):
         else:
             ik_chain_names.append("{}{}{}".format(i, rig_chains[2], type[0]))
 
-    # Create IK chain
-    ik_chain = list_joint_chain(pm.duplicate(base_joint[0], renameChildren=True)[0])
+    else:
+        raise RuntimeError("Please provide either one joint or a three joint chain")
 
     # Rename the IK chain
     for i, e in enumerate(ik_chain):
@@ -290,16 +290,30 @@ def fk_ik_hinge(base_joint):
         FK Chain, IK Chain, IK Handle, Blend Chain
     '''
 
-    # Save blend chain names
+    # Check if the argument has a single joint or a three joint chain
+    # Save the final blend joint chain names
     blend_chain_names = []
-    for i in list_joint_chain(base_joint[0]):
-        if "_JNT" in i.name():
-            blend_chain_names.append(split_name(i, "_JNT", rig_chains[0]))
-        else:
-            blend_chain_names.append("{}{}{}".format(i, rig_chains[0], type[0]))
+    if len(base_joint) == 1:
+        for i in list_joint_chain(base_joint[0]):
+            if "_JNT" in i.name():
+                blend_chain_names.append(split_name(i, "_JNT", rig_chains[0]))
+            else:
+                blend_chain_names.append("{}{}{}".format(i, rig_chains[0], type[0]))
+        # Create blend chain
+        blend_chain = list_joint_chain(pm.duplicate(base_joint[0], renameChildren=True)[0])
 
-    # Create blend chain
-    blend_chain = list_joint_chain(pm.duplicate(base_joint[0], renameChildren=True)[0])
+    elif len(base_joint) == 3:
+        for i in base_joint:
+            if "_JNT" in i.name():
+                blend_chain_names.append(split_name(i, "_JNT", rig_chains[0]))
+            else:
+                blend_chain_names.append("{}{}{}".format(i, rig_chains[0], type[0]))
+        # Create blend chain
+        blend_chain = duplicate_joint_chain(base_joint)
+        pm.parent(blend_chain[0], world=True)
+
+    else:
+        raise RuntimeError("Please provide either one joint or a three joint chain")
 
     # Rename the blend chain
     for i, e in enumerate(blend_chain):
