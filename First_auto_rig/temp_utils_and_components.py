@@ -33,11 +33,6 @@ def list_joint_chain(base_joint):
     full_chain.append(base_joint)
     full_chain.reverse()
 
-    #Remove twist joints (aka joints without children)
-    # for i, v in enumerate(full_chain):
-    #     if len(v.listRelatives(allDescendents=True, type="joint")) == 0:
-    #         full_chain.pop(i)
-
     return full_chain
 
 def fk_ik_ribbon(joint_chain):
