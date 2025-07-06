@@ -793,4 +793,16 @@ def add_hand_settings(hand_settings_ctrl, finger_ctrls=None):
             # hand_settings_ctrl.attr >> buffer.rotateZ
             pm.connectAttr("{}.{}".format(hand_settings_ctrl, attr), "{}.rotateZ".format(buffer))
 
-        inc += 3
+        inc += 3def duplicate_joint_chain(joint_chain):
+    '''
+    Duplicate a joint chain without additional children or leaf joints
+    Args:
+        joint_chain: The explicit joint chain to duplicate (will not return any descendants)
+
+    Returns: The duplicate joint chain
+    '''
+    duplicate_chain = [pm.duplicate(i, parentOnly=True)[0] for i in joint_chain]
+    for i in range(len(duplicate_chain)-1):
+        pm.parent(duplicate_chain[i+1], duplicate_chain[i])
+
+    return duplicate_chain
