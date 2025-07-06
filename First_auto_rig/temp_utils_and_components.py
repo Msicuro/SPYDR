@@ -140,19 +140,35 @@ def create_fk_rig(base_joint, fk_ctrl_size=30):
         base_joint:
 
     Returns:
+        fk control group (list), fk joint names (list)
 
     '''
+    # Check if base joint includes one joint or a three joint chain
     # Save IK chain names
     fk_chain_names = []
-    for i in list_joint_chain(base_joint[0]):
-        if "_JNT" in i.name():
-            fk_chain_names.append(split_name(i, "_JNT", rig_chains[1]))
-        else:
-            fk_chain_names.append("{}{}{}".format(i, rig_chains[1], type[0]))
+    if len(base_joint) == 1:
+        for i in list_joint_chain(base_joint[0]):
+            if "_JNT" in i.name():
+                fk_chain_names.append(split_name(i, "_JNT", rig_chains[1]))
+            else:
+                fk_chain_names.append("{}{}{}".format(i, rig_chains[1], type[0]))
+        # Create FK chain
+        fk_chain = list_joint_chain(pm.duplicate(base_joint[0], renameChildren=True)[0])
+        pm.parent(fk_chain[0], world=True)
 
-    # Create FK chain
-    fk_chain = list_joint_chain(pm.duplicate(base_joint[0], renameChildren=True)[0])
-    pm.parent(fk_chain[0], world=True)
+    elif len(base_joint) == 3:
+        for i in base_joint:
+            if "_JNT" in i.name():
+                fk_chain_names.append(split_name(i, "_JNT", rig_chains[1]))
+            else:
+                fk_chain_names.append("{}{}{}".format(i, rig_chains[1], type[0]))
+        # Create FK chain
+        fk_chain = duplicate_joint_chain(base_joint)
+        pm.parent(fk_chain[0], world=True)
+
+    else:
+        raise RuntimeError("Please provide either one joint or a three joint chain")
+
 
     # Rename the FK chain
     print(fk_chain_names)
