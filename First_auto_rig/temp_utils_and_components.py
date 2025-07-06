@@ -408,6 +408,7 @@ def fk_ik_hinge(base_joint):
     pm.parent(blend_chain[0], ctrl_jnt_grp)
     pm.parent(fk_chain[0], ctrl_jnt_grp)
     pm.parent(ik_chain[0], ctrl_jnt_grp)
+    pm.hide(ctrl_jnt_grp)
 
     return ik_chain, fk_chain, blend_chain
 
