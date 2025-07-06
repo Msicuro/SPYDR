@@ -793,7 +793,31 @@ def add_hand_settings(hand_settings_ctrl, finger_ctrls=None):
             # hand_settings_ctrl.attr >> buffer.rotateZ
             pm.connectAttr("{}.{}".format(hand_settings_ctrl, attr), "{}.rotateZ".format(buffer))
 
-        inc += 3def duplicate_joint_chain(joint_chain):
+        inc += 3
+
+def update_joint_names(joints, chain_type, obj_type, suffix="JNT"):
+    # TODO: Update function so that other objects like controls can be passed
+    '''
+    Update the names of joints to include proper suffixes
+    Args:
+        joints(List):
+        chain_type(String): From rig_chains list
+        obj_type(String): from type list
+        suffix(String): Existing suffix that might match the desired chain type
+
+    Returns:
+        new_names(List): List of updated names
+    '''
+    new_names = []
+    for i in joints:
+        if suffix in i.name():
+            new_names.append(split_name(i, suffix, chain_type))
+        else:
+            new_names.append("{}{}{}".format(i, chain_type, obj_type))
+
+    return new_names
+
+def duplicate_joint_chain(joint_chain):
     '''
     Duplicate a joint chain without additional children or leaf joints
     Args:
