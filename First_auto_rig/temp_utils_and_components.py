@@ -78,23 +78,28 @@ def loft_surface(joint_chain):
     '''
     # Get the current joint chain and save its positions to a list
     if joint_chain:
-        full_joint_chain = list_joint_chain(joint_chain)
-
-    positions = [i.getTranslation(world=True) for i in full_joint_chain]
+        positions = [i.getTranslation(space="world") for i in joint_chain]
+        print(positions)
 
     # Create the curve with CVs at the positions of the control joints
-    curve_name = joint_chain.name()
+    curve_name = joint_chain[0].name()
     curve_name.replace("JNT", "CRV")
     curve = pm.curve(point=positions, n=curve_name)
 
-    # Duplicate, move the curves to setup the loft
-    curve_dupe_01 = curve[0].duplicate()
+    # Duplicate, move the curves to set up the loft
+    curve_dupe_01 = curve.duplicate()
     curve_dupe_01[0].setTranslation([6, 0, 0])
-    curve_dupe_02 = curve[0].duplicate()
+    curve_dupe_02 = curve.duplicate()
     curve_dupe_02[0].setTranslation([-6, 0, 0])
 
-    # Loft the curves to create the surface
+    # Loft the curves to create the high-res surface
     surface, loft_constructor = pm.loft(curve_dupe_02[0], curve_dupe_01[0])
+
+    # Switch parameter range to 0 to 1
+    pm.rebuildSurface(surface, constructionHistory=True, replaceOriginal=True, rebuildType=0, endKnots=1, keepRange=0,
+                      keepCorners=0, spansU=0, degreeU=3, spansV=0, degreeV=3, tolerance=0, fitRebuild=0, direction=2)
+
+    # Rebuild low-res surface to control the high-res
 
 
 def scale_ribbon_squash_and_stretch(curve, joints):
