@@ -1,8 +1,9 @@
+import importlib
 import maya.cmds as cmds
 import json
 import os
 import system.utils as utils
-reload(utils)
+importlib.reload(utils)
 
 #Create variables above the Class level that can be read on Class import
 #This is also known as Attributes of a Class
