@@ -1,7 +1,7 @@
-from PySide2 import QtWidgets, QtCore, QtGui
+from PySide6 import QtWidgets, QtCore, QtGui
 import pymel.core
 from maya import OpenMayaUI as omui
-from shiboken2 import wrapInstance
+from shiboken6 import wrapInstance
 import logging
 
 print("IN SPYDR!")
@@ -16,7 +16,7 @@ def getMayaMainWindow():
     pointer = omui.MQtUtil.mainWindow()
     # Use wrapInstance to convert the pointer into a QMainWindow that can be used by Pyside
     if pointer:
-        return wrapInstance(long(pointer), QtWidgets.QMainWindow)
+        return wrapInstance(int(pointer), QtWidgets.QMainWindow)
 
 
 class SpydrUI(QtWidgets.QMenu):
