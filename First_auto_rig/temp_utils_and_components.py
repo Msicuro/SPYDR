@@ -93,13 +93,21 @@ def loft_surface(joint_chain):
     curve_dupe_02[0].setTranslation([-6, 0, 0])
 
     # Loft the curves to create the high-res surface
-    surface, loft_constructor = pm.loft(curve_dupe_02[0], curve_dupe_01[0])
+    surface, loft_constructor = pm.loft(curve_dupe_02[0], curve_dupe_01[0], uniform=True, autoReverse=True,
+                                        sectionSpans=1, polygon = 0, range=0, )
 
     # Switch parameter range to 0 to 1
     pm.rebuildSurface(surface, constructionHistory=True, replaceOriginal=True, rebuildType=0, endKnots=1, keepRange=0,
                       keepCorners=0, spansU=0, degreeU=3, spansV=0, degreeV=3, tolerance=0, fitRebuild=0, direction=2)
 
-    # Rebuild low-res surface to control the high-res
+    # Create a cluster at the top of the surface
+    # Create a cluster at the bottom of the surface
+
+    # Create follicles along the surface
+    # Create joints and parent them under the follicles
+
+    # Manually add transform groups in the appropriate spots to test the cluster movement
+
 
 
 def scale_ribbon_squash_and_stretch(curve, joints):
@@ -845,27 +853,45 @@ def add_hand_settings(hand_settings_ctrl, finger_ctrls=None):
 
         inc += 3
 
-def update_joint_names(joints, chain_type, obj_type, suffix="JNT"):
+def update_obj_names(obj, obj_type, chain_type=None, suffix=type[0]):
     # TODO: Update function so that other objects like controls can be passed
     '''
-    Update the names of joints to include proper suffixes
+    Update the names of objects to include proper suffixes
     Args:
-        joints(List):
-        chain_type(String): From rig_chains list
+        obj(List): List of objects to gather names (can be joints, controls, etc)
         obj_type(String): from type list
-        suffix(String): Existing suffix that might match the desired chain type
+        chain_type(String): From rig_chains list
+        suffix(String): Existing suffix that might match the desired obj type
 
     Returns:
         new_names(List): List of updated names
     '''
     new_names = []
-    for i in joints:
+    for i in obj:
         if suffix in i.name():
             new_names.append(split_name(i, suffix, chain_type))
         else:
             new_names.append("{}{}{}".format(i, chain_type, obj_type))
 
-    return new_names
+    # Check if the argument has a single object or a joint chain
+    # Save the final blend joint chain names
+    new_names = []
+    if len(obj) == 1:
+        for i in list_joint_chain(obj[0]):
+            if suffix in i.name():
+                new_names.append(split_name(i, suffix, chain_type))
+            else:
+                new_names.append("{}{}{}".format(i, chain_type, obj_type))
+
+    elif len(obj) == 3:
+        for i in obj:
+            if suffix in i.name():
+                new_names.append(split_name(i, suffix, chain_type))
+            else:
+                new_names.append("{}{}{}".format(i, chain_type, obj_type))
+
+    else:
+        raise RuntimeError("Please provide either one joint or a three joint chain")
 
 def duplicate_joint_chain(joint_chain):
     '''
@@ -880,3 +906,13 @@ def duplicate_joint_chain(joint_chain):
         pm.parent(duplicate_chain[i+1], duplicate_chain[i])
 
     return duplicate_chain
+
+def create_core():
+    # Create the hip control and size as needed
+    # Create the COG control and make 1.3X the size of the hip control
+    # Group both controls with one transform group
+    # Parent the hip control group under the COG control
+    # (Bonus) Parent the COG under the next highest world control
+    pass
+
+
