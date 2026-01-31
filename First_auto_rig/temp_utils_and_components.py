@@ -916,3 +916,20 @@ def create_core():
     pass
 
 
+def replace_ctrl(orig_ctrl, replacement_ctrl):
+    '''
+    Replace a rig control
+    Args:
+        orig_ctrl: The original control you'd like to replace
+        replacement_ctrl: The new control you'd like added  to the rig (Make sure it's already in the preferred position/size)
+
+    Returns:
+        new_ctrl_shape: The shape node for the control that was added to the transform of the old control
+    '''
+
+    # TODO: Steps:
+    # Confirm that both selections (orig_ctrl and replacement_ctrl) have shape nodes
+    # Save the shape node of the original control
+    # Duplicate the replacement control
+    # Parent the shape node of the replacement control under the transform node of the original control
+    # Delete the shape node of the original control
