@@ -927,9 +927,22 @@ def replace_ctrl(orig_ctrl, replacement_ctrl):
         new_ctrl_shape: The shape node for the control that was added to the transform of the old control
     '''
 
-    # TODO: Steps:
     # Confirm that both selections (orig_ctrl and replacement_ctrl) have shape nodes
-    # Save the shape node of the original control
-    # Duplicate the replacement control
-    # Parent the shape node of the replacement control under the transform node of the original control
-    # Delete the shape node of the original control
+    if replacement_ctrl[0].getShape() and orig_ctrl[0].getShape():
+        # Save the shape node of the original control
+        orig_shape = orig_ctrl[0].getShape()
+
+        # Duplicate the replacement control
+        replacement_duplicate = pm.duplicate(replacement_ctrl)
+        replacement_shape = replacement_duplicate[0].getShape()
+
+        # Parent the shape node of the replacement control under the transform node of the original control
+        pm.parent(replacement_shape, orig_ctrl, shape=True, relative=True)
+
+        # Delete the shape node and duplicate of the original control
+        pm.delete(replacement_ctrl)
+        pm.delete(replacement_duplicate)
+        # Delete the shape node of the original control
+        pm.delete(orig_shape)
+
+        
