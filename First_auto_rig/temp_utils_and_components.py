@@ -756,52 +756,52 @@ def add_space_switch(attr_ctrl, attr_name="Inherit_Transforms", parent_world=Non
     attr_ctrl.listAttr()[-1] >> reverse_node.inputX
     reverse_node.outputX >> parent_constraint.listAttr()[-2]
 
-    def create_wrist_correctives():
-        ## Add wrist corrective joint functionality ##
+def create_wrist_correctives():
+    ## Add wrist corrective joint functionality ##
 
-        # Pre-reqs:
-        # Create an offset group at the base of the wrist
-        # Create a control for the corrective joint
-        # ensure the corrective joint is parented to the wrist joint
-        wrist_joint = pm.selected()[0]
-        wrist_corr_base = pm.selected()[0]
-        wrist_corr_zero_grp = pm.selected()[0]
+    # Pre-reqs:
+    # Create an offset group at the base of the wrist
+    # Create a control for the corrective joint
+    # ensure the corrective joint is parented to the wrist joint
+    wrist_joint = pm.selected()[0]
+    wrist_corr_base = pm.selected()[0]
+    wrist_corr_zero_grp = pm.selected()[0]
 
-        # For rotation of the base:
-        # Create a multDoubleLinear node and set input2 to -0.630
-        rot_multDL = pm.createNode("multDoubleLinear", name="right_wrist_top_corr_rot_multDoubleLinear")
-        rot_multDL.input2.set(-0.630)
-        # Connect the rotate Z of the wrist joint to the input1 of the multDoubleLinear
-        wrist_joint.rotateZ >> rot_multDL.input1
-        # Connect the output of the multDoubleLinear to the rotate Z of the base corrective control offset group
-        rot_multDL.output >> wrist_corr_base.rotateZ
+    # For rotation of the base:
+    # Create a multDoubleLinear node and set input2 to -0.630
+    rot_multDL = pm.createNode("multDoubleLinear", name="right_wrist_top_corr_rot_multDoubleLinear")
+    rot_multDL.input2.set(-0.630)
+    # Connect the rotate Z of the wrist joint to the input1 of the multDoubleLinear
+    wrist_joint.rotateZ >> rot_multDL.input1
+    # Connect the output of the multDoubleLinear to the rotate Z of the base corrective control offset group
+    rot_multDL.output >> wrist_corr_base.rotateZ
 
-        # For translation of the corrective joint:
-        # Create a multDoubleLinear node, set input2 to .25 and connect the Rotate Z of the wrist joint to input1
-        tran_multDL = pm.createNode("multDoubleLinear", name="right_wrist_top_corr_transl_multDoubleLinear")
-        tran_multDL.input2.set(0.25)
-        wrist_joint.rotateZ >> tran_multDL.input1
-        # Create a multiplyDivide node, set operation to Divide, set input2X to -7.609
-        tran_multDV = pm.createNode("multiplyDivide", name="right_wrist_top_corr_transl_scalefactor_multiplyDivide")
-        tran_multDV.operation.set(2)
-        tran_multDV.input2X.set(7.609)
-        # Connect the Output from the multDoubleLinear node to the input1X of the multiplyDivide
-        tran_multDL.output >> tran_multDV.input1X
-        # Create a condition node and connect the output of the multiplyDivide to the colorIfTrueR and First Term
-        tran_condition = pm.createNode("condition", name="right_wrist_top_corr_transl_condition")
-        tran_multDV.outputX >> tran_condition.colorIfTrueR
-        tran_multDV.outputX >> tran_condition.firstTerm
-        # Set operation to Greater Than and Second Term to 1
-        tran_condition.operation.set(2)
-        tran_condition.secondTerm.set(1)
-        # Create a scaleFactor multDoubleLinear node
-        tran_scalefactor_multDL = pm.createNode("multDoubleLinear",
-                                                name="right_wrist_top_corr_transl_scalefactor_multDoubleLinear")
-        # Connect outColorX of the condition node to the
-        tran_condition.outColorR >> tran_scalefactor_multDL.input1
-        tran_scalefactor_multDL.input2.set(-7.609)
-        # Connect the output of the scalefactor multDoubleLinear to the Translate Y of the corrective control zero group
-        tran_scalefactor_multDL.output >> wrist_corr_zero_grp.translateY
+    # For translation of the corrective joint:
+    # Create a multDoubleLinear node, set input2 to .25 and connect the Rotate Z of the wrist joint to input1
+    tran_multDL = pm.createNode("multDoubleLinear", name="right_wrist_top_corr_transl_multDoubleLinear")
+    tran_multDL.input2.set(0.25)
+    wrist_joint.rotateZ >> tran_multDL.input1
+    # Create a multiplyDivide node, set operation to Divide, set input2X to -7.609
+    tran_multDV = pm.createNode("multiplyDivide", name="right_wrist_top_corr_transl_scalefactor_multiplyDivide")
+    tran_multDV.operation.set(2)
+    tran_multDV.input2X.set(7.609)
+    # Connect the Output from the multDoubleLinear node to the input1X of the multiplyDivide
+    tran_multDL.output >> tran_multDV.input1X
+    # Create a condition node and connect the output of the multiplyDivide to the colorIfTrueR and First Term
+    tran_condition = pm.createNode("condition", name="right_wrist_top_corr_transl_condition")
+    tran_multDV.outputX >> tran_condition.colorIfTrueR
+    tran_multDV.outputX >> tran_condition.firstTerm
+    # Set operation to Greater Than and Second Term to 1
+    tran_condition.operation.set(2)
+    tran_condition.secondTerm.set(1)
+    # Create a scaleFactor multDoubleLinear node
+    tran_scalefactor_multDL = pm.createNode("multDoubleLinear",
+                                            name="right_wrist_top_corr_transl_scalefactor_multDoubleLinear")
+    # Connect outColorX of the condition node to the
+    tran_condition.outColorR >> tran_scalefactor_multDL.input1
+    tran_scalefactor_multDL.input2.set(-7.609)
+    # Connect the output of the scalefactor multDoubleLinear to the Translate Y of the corrective control zero group
+    tran_scalefactor_multDL.output >> wrist_corr_zero_grp.translateY
 
 
 def add_hand_settings(hand_settings_ctrl, finger_ctrls=None):
