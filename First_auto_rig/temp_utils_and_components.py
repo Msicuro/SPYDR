@@ -580,7 +580,8 @@ def save_duplicate_chain_names(base_joint):
             i = "{}{}{}".format(i.name(), rig_chains[1], type[0])
 
 
-def create_reverse_foot(ankle_ik_joint, ankle_ik_ctrl, inner_offset=30, outer_offset=30, toetip_offset=1, heel_offset=64):
+def create_reverse_foot(ankle_ik_joint, ankle_ik_ctrl, inner_offset=30, outer_offset=30, toetip_offset=1, heel_offset=1,
+                        height_offset=10):
     '''
     Create a reverse foot setup on a three joint ik foot
     Args:
@@ -608,20 +609,29 @@ def create_reverse_foot(ankle_ik_joint, ankle_ik_ctrl, inner_offset=30, outer_of
     ankle_pos = ik_foot_chain[0].getTranslation(space="world")
 
     in_bank_pos = [i for i in ball_pos]
-    in_bank_pos[1] -= 10
+    in_bank_pos[1] -= height_offset
     in_bank_pos[0] -= inner_offset
 
     out_bank_pos = [i for i in ball_pos]
-    out_bank_pos[1] -= 10
+    out_bank_pos[1] -= height_offset
     out_bank_pos[0] += outer_offset
 
-    heel_pos = [i for i in ball_pos]
-    heel_pos[1] -= 10
-    heel_pos[-1] -= heel_offset
 
-    toetip_pos = [i for i in toe_pos]
-    toetip_pos[1] -= 10
-    toetip_pos[-1] += toetip_offset
+    toetip_pos = (ball_pos - ankle_pos) * toetip_offset + ankle_pos
+    # toetip_pos = [i for i in toe_pos]
+    # toetip_pos[1] -= height_offset
+    # toetip_pos[-1] += toetip_offset
+
+    heel_temp = ankle_pos - toetip_pos
+    heel_temp[1] = 0
+    heel_temp *= heel_offset
+
+    heel_pos = toetip_pos + heel_temp
+
+    # heel_pos = [i for i in ball_pos]
+    # heel_pos[1] -= height_offset
+    # # heel_offset default was previously 64
+    # heel_pos[-1] -= heel_offset
 
     in_bank_grp = pm.group(empty=True, name="{}_inner_bank{}".format(prefix_name, type[2]))
     in_bank_grp.setTranslation(in_bank_pos, space="world")
@@ -651,11 +661,28 @@ def create_reverse_foot(ankle_ik_joint, ankle_ik_ctrl, inner_offset=30, outer_of
     reverse_foot_chain_names.append("{}_{}{}{}".format(prefix_name, "heel", rig_chains[3], type[0]))
     reverse_foot_chain_names.reverse()
 
-    # Create reverse foot chain
-    reverse_foot_chain = [pm.joint() for i in range(4)]
+    # Create reverse foot joints
+    # reverse_foot_chain = [pm.joint() for i in range(4)]
+    reverse_foot_chain = []
+    for i in range(4):
+        pm.select(clear=True)
+        reverse_foot_chain.append(pm.joint())
+
+
     # Move the reverse joints into place
     for i, e in enumerate(reverse_foot_chain):
         e.setTranslation(reverse_foot_chain_pos[i], space="world")
+
+    # Orient the reverse foot joints to the same direction in the Y axis
+    pm.select(clear=True)
+    temp_orient = pm.joint(name="temp")
+    temp_orient.setTranslation((ball_pos - ankle_pos) * (toetip_offset + 0.2) + ankle_pos, space="world")
+    for i in reverse_foot_chain:
+        pm.delete(pm.aimConstraint(temp_orient, i, aimVector=[0,0,1], worldUpType="vector", worldUpVector= [0, 1, 0],
+                                   skip= ["x", "z"]))
+        pm.makeIdentity(i, t=False, r=True, s=False, apply=True)
+    pm.delete(temp_orient)
+
 
     # Rename the reverse joint chain
     for i, e in enumerate(reverse_foot_chain):
@@ -664,6 +691,11 @@ def create_reverse_foot(ankle_ik_joint, ankle_ik_ctrl, inner_offset=30, outer_of
     # Parent the reverse joint chain
     for i in range(len(reverse_foot_chain)-1):
         pm.parent(reverse_foot_chain[i+1], reverse_foot_chain[i])
+
+    # # Re-orient the foot chain to point towards each child joint
+    # # TODO: Fix orientation so it doesn't flip the toe
+    # reverse_foot_chain[0].orientJoint("xyz", sao="yup", ch=False, zso=True)
+    # reverse_foot_chain[1].orientJoint("xyz", sao="yup", ch=True, zso=True)
 
     ankle_ik_handle = [i for i in ankle_ik_ctrl[0].listRelatives(children=True, allDescendents=True) if i.nodeType() == "ikHandle"][0]
     ball_ik_handle = pm.ikHandle(name="{}_ball_ikHandle".format(prefix_name), startJoint=ik_foot_chain[0],
@@ -675,6 +707,7 @@ def create_reverse_foot(ankle_ik_joint, ankle_ik_ctrl, inner_offset=30, outer_of
     pm.parent(ball_ik_handle, reverse_foot_chain[-2])
     pm.parent(toe_ik_handle, toe_tap_grp)
     pm.parent(toe_tap_grp, reverse_foot_chain[-3])
+    pm.parent(reverse_foot_chain[0], out_bank_grp)
 
     pm.parent(in_bank_grp, ankle_ik_ctrl[0])
 
